@@ -33,7 +33,9 @@ int ql_psm_settings_write(at_client_t client, ql_psm_setting_s settings);
 // read fucntions
 int ql_psm_settings_read(at_client_t client, ql_psm_setting_s *settings);
 
+void ql_psm_pon_trig_ctrl(int value);
 
+void ql_psm_wakeup();
 #endif /* __QL_PSM_H__ */
 #endif /* __QUECTEL_UFP_FEATURE_SUPPORT_PSM__ */
 

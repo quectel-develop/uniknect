@@ -125,7 +125,6 @@ static void ql_ftp_urc_size(struct at_client *client, const char *data, size_t s
         handle->protocol_err = (QL_FTP_ERR_CODE_E)value;
     else
         handle->file_size = value;
-    LOG_D("file size: %d", handle->file_size);
     qosa_sem_release(handle->sem);
 }
 
@@ -280,12 +279,24 @@ static void ql_ftp_upload_cb(const char *data, size_t len, void* arg)
     {
         while (true)
         {
-            if (f_read(&handle->file, buffer, 1024, &br) != FR_OK || 0 == br)
+            if (handle->usr_read_cb != NULL)
+            {
+                br = handle->usr_read_cb(buffer, 1024, handle->user_read_data);
+            }
+            else
+            {
+                if (f_read(&handle->file, buffer, 1024, &br) != FR_OK)
+                {
+                    LOG_E("f_read error");
+                    break;
+                }
+            }
+            if (br <= 0)
                 break;
-            at_client_obj_send(handle->client, buffer, br, false); // Send data to the modem
+            at_client_obj_send_nolock(handle->client, buffer, br, false); // Send data to the modem
         }
         qosa_task_sleep_ms(2000);
-        at_client_obj_send(handle->client, "+++", 3, true);
+        at_client_obj_send_nolock(handle->client, "+++", 3, true);
     }
     else if (strstr(buffer, "ERROR") != NULL || strstr(buffer, "+CME ERROR") != NULL)
     {
@@ -294,7 +305,8 @@ static void ql_ftp_upload_cb(const char *data, size_t len, void* arg)
         handle->err = (QL_FTP_ERR_CODE_E)err;
         qosa_sem_release(handle->sem);
     }
-    f_close(&handle->file);
+    if (NULL == handle->usr_read_cb)
+        f_close(&handle->file);
 }
 
 static void ql_ftp_download_cb(const char *data, size_t len, void* arg)
@@ -307,35 +319,49 @@ static void ql_ftp_download_cb(const char *data, size_t len, void* arg)
     size_t recv_len  = 0;
     if (strstr(buffer, "CONNECT\r\n") != NULL)
     {
+        if (handle->usr_write_cb != NULL)
+            handle->usr_write_cb(QL_FTP_USR_DOWNLOAD_START, NULL, handle->file_size, handle->user_write_data);
         while (total_len < handle->file_size)
         {
             recv_len = ((handle->file_size - total_len) > 1024) ? 1024 : (handle->file_size - total_len);
-            recv_len = at_client_self_recv(handle->client, buffer, recv_len, (handle->timeout - 1) * 1000 , 0, false);
+            recv_len = at_client_obj_recv(handle->client, buffer, recv_len, 10 * 1000 , false);
             if (recv_len <= 0)
             {
                 LOG_E("download over ");
+                handle->err = QL_FTP_ERR_DOWNLOAD;
+                qosa_sem_release(handle->sem);
                 break;
             }
             total_len += recv_len;
-            if ((handle->file.flag & FA_WRITE) == 0)
-                continue;
-            FRESULT ret = f_write(&handle->file, buffer, recv_len, &br);
-            if(ret != FR_OK)
+            LOG_I("total_len %d", total_len);
+            if (handle->usr_write_cb != NULL)
             {
-                LOG_E("write file error : %d", ret);
-                if (FR_INVALID_OBJECT == ret)
-                {
-                    f_close(&handle->file);
-                }
+                handle->usr_write_cb(QL_FTP_USR_DOWNLOAD_DATA, buffer, recv_len, handle->user_write_data);
             }
-            LOG_I("write %d bytes", total_len);
+            else
+            {
+                if ((handle->file.flag & FA_WRITE) == 0)
+                    continue;
+                FRESULT ret = f_write(&handle->file, buffer, recv_len, &br);
+                if(ret != FR_OK)
+                {
+                    LOG_E("write file error : %d", ret);
+                    if (FR_INVALID_OBJECT == ret)
+                    {
+                        f_close(&handle->file);
+                    }
+                }
+                LOG_I("write %d bytes", total_len);
+            }
         }
+        if (handle->usr_write_cb != NULL)
+            handle->usr_write_cb(QL_FTP_USR_DOWNLOAD_END, NULL, 0, handle->user_write_data);
     }
     else if (strstr(buffer, "ERROR") != NULL || strstr(buffer, "+CME ERROR") != NULL)
     {
         int err = 0;
         if (sscanf(buffer, "+CME ERROR: %d", &err) == 1)
-        handle->err = (QL_FTP_ERR_CODE_E)err;
+            handle->err = (QL_FTP_ERR_CODE_E)err;
         qosa_sem_release(handle->sem);
     }
     if ((handle->file.flag & FA_WRITE) == FA_WRITE)
@@ -497,7 +523,7 @@ static QL_FTP_ERR_CODE_E ql_ftp_exec_cmd(ql_ftp_t handle, at_response_t resp, QL
 {
     va_list args;
     int ret;
-    char formatted_cmd[1024] = {0};
+    char formatted_cmd[512] = {0};
 
     va_start(args, cmd_format);
     vsnprintf(formatted_cmd, sizeof(formatted_cmd), cmd_format, args);
@@ -524,7 +550,7 @@ static QL_FTP_ERR_CODE_E ql_ftp_exec_cmd(ql_ftp_t handle, at_response_t resp, QL
         return default_err;
     }
 
-    qosa_sem_wait(handle->sem, (handle->timeout + 1) * 1000);
+    qosa_sem_wait(handle->sem, QOSA_WAIT_FOREVER);
     at_delete_resp(resp);
     // qosa_mutex_unlock(handle->client->lock);
     return handle->err;
@@ -562,6 +588,10 @@ ql_ftp_t ql_ftp_init(const char* host, u16_t port, at_client_t client)
     handle->file_size = 0;
     handle->file_list = NULL;
     handle->ssl.ssltype = 0;
+    handle->usr_write_cb = NULL;
+    handle->usr_read_cb = NULL;
+    handle->user_write_data = NULL;
+    handle->user_read_data = NULL;
     qosa_sem_create(&handle->sem, 0);
     if (!s_global_ftp_init)
     {
@@ -678,6 +708,28 @@ bool ql_ftp_setopt(ql_ftp_t handle, QL_FTP_OPTION_E option, ...)
             ret = true;
             break;
         }
+        case QL_FTP_OPT_WRITE_FUNCTION:
+            handle->usr_write_cb = va_arg(arg, ftp_user_write_callback);
+            at_delete_resp(resp);
+            va_end(arg);
+            return true;
+
+        case QL_FTP_OPT_READ_FUNCTION:
+            handle->usr_read_cb = va_arg(arg, ftp_user_read_callback);
+            at_delete_resp(resp);
+            va_end(arg);
+            return true;
+
+        case QL_FTP_OPT_WRITE_DATA:
+            handle->user_write_data = va_arg(arg, void*);
+            at_delete_resp(resp);
+            va_end(arg);
+            return true;
+       case QL_FTP_OPT_READ_DATA:
+            handle->user_read_data = va_arg(arg, void*);
+            at_delete_resp(resp);
+            va_end(arg);
+            return true;
         default:
             ret = 0;
             break;
@@ -713,7 +765,7 @@ QL_FTP_ERR_CODE_E ql_ftp_login(ql_ftp_t handle, const char* username, const char
         return QL_FTP_ERR_NOINIT;
     if (username != NULL && password != NULL)
     {
-        char account[1024] = {0};
+        char account[256] = {0};
         snprintf(account, sizeof(account), "\"%s\",\"%s\"", username, password);
         ql_ftp_setopt(handle, QL_FTP_OPT_ACCOUNT, account);
     }
@@ -849,26 +901,34 @@ QL_FTP_ERR_CODE_E ql_ftp_upload(ql_ftp_t handle, const char *local_file_name, co
     if (NULL == handle)
         return QL_FTP_ERR_NOINIT;
 
-    if (NULL == local_file_name || NULL == remote_file_name || strlen(local_file_name) == 0 || strlen(remote_file_name) == 0)
+    if (NULL == remote_file_name || strlen(remote_file_name) == 0 || (NULL == local_file_name && NULL == handle->usr_read_cb))
         return QL_FTP_ERR_INVALID_PARAM;
     at_response_t resp = NULL;
     const char *local_name = NULL;
-    if (strstr(local_file_name, "0:") != NULL)
+    if (handle->usr_read_cb != NULL)
     {
-
-        if (f_open(&handle->file, local_file_name, FA_READ) != FR_OK)
-        {
-            LOG_E("Failed to open file %s", local_file_name);
-            return QL_FTP_ERR_UPLOAD;
-        }
         local_name = "COM:";
         resp = at_create_resp_by_selffunc_new(128, 0, handle->timeout * 1000 * 2, ql_ftp_upload_cb, handle);
     }
     else
     {
-        local_name = local_file_name;
-        resp = at_create_resp_new(128, 0, handle->timeout * 1000 * 2, handle);
+        if (strstr(local_file_name, "0:") != NULL)
+        {
+            if (f_open(&handle->file, local_file_name, FA_READ) != FR_OK)
+            {
+                LOG_E("Failed to open file %s", local_file_name);
+                return QL_FTP_ERR_UPLOAD;
+            }
+            local_name = "COM:";
+            resp = at_create_resp_by_selffunc_new(128, 0, handle->timeout * 1000 * 2, ql_ftp_upload_cb, handle);
+        }
+        else
+        {
+            local_name = local_file_name;
+            resp = at_create_resp_new(128, 0, handle->timeout * 1000 * 2, handle);
+        }
     }
+    
     return ql_ftp_exec_cmd(handle, resp, QL_FTP_ERR_UPLOAD, "AT+QFTPPUT=\"%s\",\"%s\",0", remote_file_name, local_name);
 }
 
@@ -877,7 +937,7 @@ QL_FTP_ERR_CODE_E ql_ftp_download(ql_ftp_t handle, const char *remote_file_name,
     if (NULL == handle)
         return QL_FTP_ERR_NOINIT;
 
-    if (NULL == local_file_name || NULL == remote_file_name || strlen(local_file_name) == 0 || strlen(remote_file_name) == 0)
+    if (NULL == remote_file_name || strlen(remote_file_name) == 0 || (NULL == local_file_name && NULL == handle->usr_write_cb))
         return QL_FTP_ERR_INVALID_PARAM;
 
     QL_FTP_ERR_CODE_E err = ql_ftp_file_size(handle, remote_file_name, &handle->file_size);
@@ -885,22 +945,30 @@ QL_FTP_ERR_CODE_E ql_ftp_download(ql_ftp_t handle, const char *remote_file_name,
         return err;
     at_response_t resp = NULL;
     const char *local_name = NULL;
-    if (strstr(local_file_name, "0:") != NULL)
+    if (handle->usr_write_cb != NULL)
     {
-
-        if (f_open(&handle->file, local_file_name, FA_WRITE | FA_CREATE_ALWAYS) != FR_OK)
-        {
-            LOG_E("Failed to open file %s", local_file_name);
-            return QL_FTP_ERR_DOWNLOAD;
-        }
         local_name = "COM:";
         resp = at_create_resp_by_selffunc_new(128, 0, handle->timeout * 1000 * 2, ql_ftp_download_cb, handle);
     }
     else
     {
-        local_name = local_file_name;
-        resp = at_create_resp_new(128, 0, handle->timeout * 1000 * 2, handle);
+        if (strstr(local_file_name, "0:") != NULL)
+        {
+            if (f_open(&handle->file, local_file_name, FA_WRITE | FA_CREATE_ALWAYS) != FR_OK)
+            {
+                LOG_E("Failed to open file %s", local_file_name);
+                return QL_FTP_ERR_DOWNLOAD;
+            }
+            local_name = "COM:";
+            resp = at_create_resp_by_selffunc_new(128, 0, handle->timeout * 1000 * 2, ql_ftp_download_cb, handle);
+        }
+        else
+        {
+            local_name = local_file_name;
+            resp = at_create_resp_new(128, 0, handle->timeout * 1000 * 2, handle);
+        }
     }
+
     return ql_ftp_exec_cmd(handle, resp, QL_FTP_ERR_DOWNLOAD, "AT+QFTPGET=\"%s\",\"%s\"", remote_file_name, local_name);
 }
 

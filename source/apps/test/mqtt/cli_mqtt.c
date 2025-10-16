@@ -288,7 +288,7 @@ void cli_mqtt_get_help(void)
 {
     LOG_W("This function is not supported");
 }
-int cli_mqtt_test(int argc, char *argv[])
+int cli_mqtt_test(s32_t argc, char *argv[])
 {
     LOG_W("This function is not supported");
 }

@@ -6,6 +6,9 @@
   */
 #include "spi_flash.h"
 
+extern void SPI1_SetSpeed(uint8_t SPI_BaudRatePrescaler);
+extern uint8_t SPI1_ReadWriteByte(uint8_t TxData);
+
 uint16_t SPI_FLASH_TYPE = W25Q64;	//Default W25Q64
 
 // 4Kbytes is a Sector

@@ -7,6 +7,7 @@ typedef enum
     MOD_TYPE_DEFAULT,   // Default
     MOD_TYPE_BG95,      // BG95
     MOD_TYPE_BG96,      // BG96
+    MOD_TYPE_BG770,		// BG770
     MOD_TYPE_EC800M,    // EC800M
     MOD_TYPE_EC25,      // EC25
     MOD_TYPE_MAX,

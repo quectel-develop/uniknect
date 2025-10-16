@@ -346,7 +346,7 @@ static void debug_service_thread_proc(void* pThreadParam)
             goto __exit;
 		}
 
-		while (g_save_debug_flag && ringbuffer_used_length(&g_log_rb))
+		while (g_save_debug_flag && ringbuffer_length(&g_log_rb))
 		{
 			memset(LOG_BUFFER, 0, DBG_BUFF_LEN);
 			ringbuffer_get(&g_log_rb, LOG_BUFFER, sizeof(size));
@@ -469,7 +469,7 @@ static void cli_debug_get_help(void)
     LOG_I("--------------------------------------------");
 }
 
-static int cli_debug_test(int argc, char *argv[])
+static int cli_debug_test(s32_t argc, char *argv[])
 {
 	uint64_t total_bytes;
 	uint32_t total_gb;
@@ -548,7 +548,7 @@ static int cli_debug_test(int argc, char *argv[])
     return 0;
 }
 
-static int cli_at_test(int argc, char *argv[])
+static int cli_at_test(s32_t argc, char *argv[])
 {
 	if (argc < 2)
 	{

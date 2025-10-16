@@ -20,6 +20,7 @@ typedef enum
     QL_NET_OPTINON_SCANMODE,
     QL_NET_OPTINON_SCANSEQ,
     QL_NET_OPTINON_IOTOPMODE,
+    QL_NET_OPTINON_BAND,
 
     QL_NET_OPTINON_UNKNOWN
 } QL_NET_OPTION_E;
@@ -31,6 +32,17 @@ typedef struct ql_net_content
     char* username;
     char* password;
 } ql_net_content_s;
+
+/*
+    Hexadecimal data is stored in a char array.
+    if bandx set 0, means not cnange
+*/
+typedef struct ql_net_band
+{
+    char band1[32]; // GSM or CDMA
+    char band2[32]; // LTE
+    char band3[32]; // CDMA or NB-IOT
+} ql_net_band_s;
 
 typedef struct ql_net
 {
@@ -73,11 +85,13 @@ bool ql_net_set_opt(ql_net_t handle, QL_NET_OPTION_E option, ...);
 QL_NET_ERR_CODE_E ql_net_attach(ql_net_t handle);
 
 /*
- * @brief Get RSSI
+ * @brief get signal strength and quality
  * @param handle net client handle returned by ql_net_init()
- * @return RSSI value
+ * @param strength signal strength
+ * @param quality signal quality
+ * @return 0: get success, -1: get failed
 */
-int ql_net_get_rssi(ql_net_t handle);
+int ql_net_get_signal_info(ql_net_t handle, int *strength, int *quality);
 
 /*
  * @brief Get IP address

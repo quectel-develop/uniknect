@@ -41,7 +41,7 @@ bool ql_sd_init(void)
 			total_gb = total_bytes / (1024 * 1024 * 1024);      // Integer part (GB)
 			decimal_part = (total_bytes % (1024 * 1024 * 1024)) / (1024 * 1024) * 100 / 1024; // Decimal part
 			// Print result (Format: X.Y GB)
-			LOG_D("CardCapacity  : %lu.%02uGB", total_gb, decimal_part);// Total storage capacity (BlockSize × BlockNbr)
+			LOG_D("CardCapacity  : %lu.%02luGB", total_gb, decimal_part);// Total storage capacity (BlockSize × BlockNbr)
 
 			RES = f_getfree("0:", &free_clusters, &fs_ptr);
 			if (FR_OK == RES)
@@ -49,13 +49,13 @@ bool ql_sd_init(void)
 				total_bytes = (uint64_t)free_clusters * fs_ptr->csize * hsd.SdCard.BlockSize;
 				total_gb = total_bytes / (1024 * 1024 * 1024);
 				decimal_part = (total_bytes % (1024 * 1024 * 1024)) / (1024 * 1024) * 100 / 1024;
-				LOG_D("FreeSpace     : %lu.%02uGB", total_gb, decimal_part);
+				LOG_D("FreeSpace     : %lu.%02luGB", total_gb, decimal_part);
 			}
-			LOG_D("CardBlockSize : %d", hsd.SdCard.BlockSize);   // Physical block size
-			LOG_D("LogBlockNbr   : %d", hsd.SdCard.LogBlockNbr);	// Number of logical blocks
-			LOG_D("LogBlockSize  : %d", hsd.SdCard.LogBlockSize);// Logical block size
-			LOG_D("RCA           : 0x%X", hsd.SdCard.RelCardAdd);  // Relative Card Address
-			LOG_D("CardType      : %d (0: <= 2GB; 1: 2GB-32GB; 2: >32GB)", hsd.SdCard.CardType);    // Card type
+			LOG_D("CardBlockSize : %lu", hsd.SdCard.BlockSize);   // Physical block size
+			LOG_D("LogBlockNbr   : %lu", hsd.SdCard.LogBlockNbr);	// Number of logical blocks
+			LOG_D("LogBlockSize  : %lu", hsd.SdCard.LogBlockSize);// Logical block size
+			LOG_D("RCA           : 0x%lX", hsd.SdCard.RelCardAdd);  // Relative Card Address
+			LOG_D("CardType      : %lu (0: <= 2GB; 1: 2GB-32GB; 2: >32GB)", hsd.SdCard.CardType);    // Card type
 			//
 			HAL_SD_CardCIDTypeDef sdcard_cid;
 			HAL_SD_GetCardCID(&hsd,&sdcard_cid);

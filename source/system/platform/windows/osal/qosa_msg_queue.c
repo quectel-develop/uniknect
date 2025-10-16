@@ -18,7 +18,7 @@
 #include "qosa_system.h"
 #include "qosa_queue_list.h"
 
-#define event_printf(msg, ...) printf("%s,%d," msg "\r\n", __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define event_printf(msg, ...) printf("%s,%u," msg "\r\n", __FUNCTION__, __LINE__, ##__VA_ARGS__)
 
 struct osa_event_data
 {
@@ -169,13 +169,13 @@ int qosa_msgq_release(osa_msgq_t msgQRef, u32_t size, uint8_t *value, u32_t time
     if (size != hndl->event_size)
     {
         //TODO:
-        event_printf("The current size=%d is different from the initial size=%d.", size, hndl->event_size);
+        event_printf("The current size=%lu is different from the initial size=%lu.", size, hndl->event_size);
         return QOSA_ERROR_EVENT_SIZE_ERR;
     }
 
     if (hndl->current_cnt >= hndl->event_max_count)
     {
-        event_printf("event count=%d full, please check you code", hndl->current_cnt);
+        event_printf("event count=%lu full, please check you code", hndl->current_cnt);
         return QOSA_ERROR_EVENT_FULL_ERR;
     }
 

@@ -134,7 +134,7 @@ typedef struct at_urc *at_urc_table_t;
 
 /* ========================== multiple AT client function ============================ */
 /* AT client initialize and start*/
-int at_client_init(size_t recv_bufsz, size_t send_bufsz);
+int at_client_init(at_client_t client, size_t recv_bufsz, size_t send_bufsz);
 /* get AT client object */
 at_client_t at_client_get(void);
 at_client_t at_client_get_first(void);

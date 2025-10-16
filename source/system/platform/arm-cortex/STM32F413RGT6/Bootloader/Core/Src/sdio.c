@@ -28,6 +28,7 @@ SD_HandleTypeDef hsd;
 DMA_HandleTypeDef hdma_sdio_rx;
 DMA_HandleTypeDef hdma_sdio_tx;
 
+extern void ql_sd_hardware_init(void);
 /* SDIO init function */
 
 void MX_SDIO_SD_Init(void)

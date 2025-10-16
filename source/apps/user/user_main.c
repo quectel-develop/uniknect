@@ -21,15 +21,20 @@ void user_main(void* argv)
 
 /* Example code mode */
 #else
-    /* Restart the module */
+    /* 1. Module hardware init */
     ql_module_hardware_init();
-    qosa_task_sleep_sec(5);
+
+    /* 2. SDCard init */
     ql_sd_init();
 
-    /* AT Client init */
-    at_client_init(128, 128);
+    /* 3. AT UART init */
+    ql_at_uart_init(at_client_get_first());
 
+    LOG_I("########## example start ##########");
+
+    #ifdef __QUECTEL_UFP_FEATURE_SUPPORT_NETWORK__
     example_network();
+    #endif
 
     #ifdef __QUECTEL_UFP_FEATURE_SUPPORT_FILESYSTEM__
     example_file();
@@ -45,6 +50,9 @@ void user_main(void* argv)
     #ifdef __QUECTEL_UFP_FEATURE_SUPPORT_MQTT_S__
     example_mqtt();
     #endif
+
+    qosa_task_sleep_ms(500);
+    LOG_I("########## example end ##########");
 
 #endif /*  __QUECTEL_UFP_FEATURE_SUPPORT_CLI_TEST__ */
 

@@ -19,7 +19,7 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
 # Project Settings
-project("Quectel_UFP_STM32F413RGT6_20251009" C CXX ASM)
+project("Quectel_UFP_STM32F413RGT6_20250916" C CXX ASM)
 message(STATUS "----- PROJECT_NAME [${PROJECT_NAME}] -----")
 
 # Compiler optimization level
@@ -51,6 +51,7 @@ add_definitions(-DUSE_HAL_DRIVER -DSTM32F413xx)
 # Add source file paths recursively (.c/.s files) with dynamic refresh
 # [CONFIGURE DEPENDS] supports dynamic lookup of add-on files
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
+    ${CMAKE_SOURCE_DIR}/apps/example/fota/*.c
     ${CMAKE_SOURCE_DIR}/apps/example/fs/*.c
     ${CMAKE_SOURCE_DIR}/apps/example/ftp/*.c
     ${CMAKE_SOURCE_DIR}/apps/example/http/*.c
@@ -60,6 +61,7 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
     ${CMAKE_SOURCE_DIR}/apps/example/sockets/*.c
     ${CMAKE_SOURCE_DIR}/apps/test/*.c
     ${CMAKE_SOURCE_DIR}/apps/test/file/*.c
+    ${CMAKE_SOURCE_DIR}/apps/test/fota/*.c
     ${CMAKE_SOURCE_DIR}/apps/test/ftp/*.c
     ${CMAKE_SOURCE_DIR}/apps/test/http/*.c
     ${CMAKE_SOURCE_DIR}/apps/test/mqtt/*.c
@@ -88,6 +90,7 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
 
 # Add global include paths (.h files)
 include_directories(
+    ${CMAKE_SOURCE_DIR}/apps/example/fota
     ${CMAKE_SOURCE_DIR}/apps/example/fs
     ${CMAKE_SOURCE_DIR}/apps/example/ftp
     ${CMAKE_SOURCE_DIR}/apps/example/http
@@ -97,6 +100,7 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/apps/example/sockets
     ${CMAKE_SOURCE_DIR}/apps/test
     ${CMAKE_SOURCE_DIR}/apps/test/file
+    ${CMAKE_SOURCE_DIR}/apps/test/fota
     ${CMAKE_SOURCE_DIR}/apps/test/ftp
     ${CMAKE_SOURCE_DIR}/apps/test/http
     ${CMAKE_SOURCE_DIR}/apps/test/mqtt

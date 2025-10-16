@@ -168,7 +168,7 @@ static void ql_http_cb(const char *data, size_t len, void* arg)
     }
     if (handle->usr_write_cb != NULL)
     {
-        handle->usr_write_cb(QL_HTTP_USR_EVENT_START, NULL, 0, handle->user_write_data);
+        handle->usr_write_cb(QL_HTTP_USR_EVENT_START, NULL, handle->content_length, handle->user_write_data);
     }
     bool has_header = handle->response_header;
     while (handle->content_left > 0)
@@ -178,7 +178,7 @@ static void ql_http_cb(const char *data, size_t len, void* arg)
         {
             memset(body_data, 0, HTTP_POST_MAX_LEN);
             read_len = at_client_self_recv(handle->client, body_data, HTTP_POST_MAX_LEN, (handle->timeout - 1) * RT_TICK_PER_SECOND, 1, false);
-            handle->usr_write_cb(QL_HTTP_USR_EVENT_DATA, body_data, read_len, handle->user_write_data);
+            handle->usr_write_cb(QL_HTTP_USR_EVENT_HEADER_DATA, body_data, read_len, handle->user_write_data);
             if (strcmp(body_data, "\r\n") == 0)
             {
                 LOG_I("http header end");
@@ -188,10 +188,16 @@ static void ql_http_cb(const char *data, size_t len, void* arg)
                 continue;
         }
         read_len = handle->content_left > HTTP_POST_MAX_LEN ? HTTP_POST_MAX_LEN : handle->content_left;
-        read_len = at_client_obj_recv(handle->client, body_data, read_len, (handle->timeout - 1) * RT_TICK_PER_SECOND, false);
+        read_len = at_client_obj_recv(handle->client, body_data, read_len, 10 * RT_TICK_PER_SECOND, false);
+        if (read_len <= 0)
+        {
+            LOG_E("http body read error");
+            handle->err_code = QL_HTTP_ERR_TIMEOUT;
+            break;
+        }
         if (handle->usr_write_cb != NULL)
         {
-            handle->usr_write_cb(QL_HTTP_USR_EVENT_DATA, body_data, read_len, handle->user_write_data);
+            handle->usr_write_cb(QL_HTTP_USR_EVENT_BODY_DATA, body_data, read_len, handle->user_write_data);
         }
         else
         {
@@ -221,9 +227,9 @@ static QL_HTTP_ERR_CODE_E ql_http_set_url(ql_http_t handle, at_response_t resp, 
 {
     if (NULL == url)
          return QL_HTTP_ERR_URL_INVALID;
-    ql_http_setopt(handle, QL_HTTP_OPT_SSL_CONTEXT_ID, handle->ssl.sslctxid);
     if (strstr((char *)url, "https://") != NULL)
     {
+        ql_http_setopt(handle, QL_HTTP_OPT_SSL_CONTEXT_ID, handle->ssl.sslctxid);
         handle->ssl.sslenble = 1;
         if (NULL == handle->ssl.cacert_dst_path)
             handle->ssl.cacert_dst_path = "http_ca.pem";
@@ -390,9 +396,11 @@ static QL_HTTP_ERR_CODE_E ql_http_read(ql_http_t handle)
         return QL_HTTP_ERR_READ;
     }
     at_delete_resp(query_resp);
-    qosa_sem_wait(handle->sem, (handle->wait_time +1) * RT_TICK_PER_SECOND);
-    if (handle->err_code != QL_HTTP_OK)
-        return handle->err_code;
+    while (qosa_sem_wait(handle->sem, (handle->wait_time +1) * RT_TICK_PER_SECOND) != QOSA_OK)
+    {
+        if (handle->err_code != QL_HTTP_OK)
+            return handle->err_code;
+    }
     return QL_HTTP_OK;
 }
 
@@ -526,13 +534,13 @@ bool ql_http_setopt(ql_http_t handle, QL_HTTP_OPTION_E option, ...)
             return true;
 
         case QL_HTTP_OPT_WRITE_FUNCTION:
-            handle->usr_write_cb = va_arg(arg, user_write_callback);
+            handle->usr_write_cb = va_arg(arg, http_user_write_callback);
             at_delete_resp(resp);
             va_end(arg);
             return true;
 
         case QL_HTTP_OPT_READ_FUNCTION:
-            handle->usr_read_cb = va_arg(arg, user_read_callback);
+            handle->usr_read_cb = va_arg(arg, http_user_read_callback);
             at_delete_resp(resp);
             va_end(arg);
             return true;
@@ -615,6 +623,10 @@ QL_HTTP_ERR_CODE_E ql_http_request(ql_http_t handle, const char* url, QL_HTTP_ME
     if (NULL == handle->usr_write_cb)
         handle->data = (char*)malloc(handle->content_length);
     err = ql_http_read(handle);
+    if (handle->request_header)
+        ql_http_setopt(handle, QL_HTTP_OPT_REQUEST_HEADER, 0);
+    if (handle->response_header)
+        ql_http_setopt(handle, QL_HTTP_OPT_RESPONSE_HEADER, 0);
     qosa_mutex_unlock(handle->client->lock);
     return err;
 }
@@ -638,7 +650,8 @@ void ql_http_deinit(ql_http_t handle)
 {
     if(NULL == handle)
         return;
-    if (strstr(get_module_type_name(), "BG95") == NULL && strstr(get_module_type_name(), "BG96") == NULL)
+    if (strstr(get_module_type_name(), "BG95") == NULL && strstr(get_module_type_name(), "BG96") == NULL
+        && strstr(get_module_type_name(), "BG770") == NULL)
     {
         at_response_t resp = at_create_resp_new(128, 2, handle->timeout * RT_TICK_PER_SECOND, handle);
         at_obj_exec_cmd(handle->client, resp, "AT+QHTTPSTOP", handle->timeout);

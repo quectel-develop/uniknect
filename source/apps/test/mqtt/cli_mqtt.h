@@ -7,7 +7,7 @@
 #include "qosa_def.h"
 
 void cli_mqtt_get_help(void);
-int cli_mqtt_test(int argc, char *argv[]);
+int cli_mqtt_test(s32_t argc, char *argv[]);
 #endif /* __CLI_MQTT_H__ */
 #endif /* __QUECTEL_UFP_FEATURE_SUPPORT_MQTT_S__ */
 #endif /* __QUECTEL_UFP_FEATURE_SUPPORT_CLI_TEST__ */

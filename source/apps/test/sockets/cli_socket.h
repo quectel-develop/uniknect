@@ -23,7 +23,7 @@ typedef struct {
 }socket_test_config;
 
 void cli_socket_get_help(void);
-int cli_socket_test(int argc, char *argv[]);
+int cli_socket_test(s32_t argc, char *argv[]);
 
 #endif /* __CLI_SOCKET_H__ */
 #endif /* __QUECTEL_UFP_FEATURE_SUPPORT_SOCKET__ */

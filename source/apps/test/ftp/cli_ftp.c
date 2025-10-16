@@ -31,7 +31,7 @@ void cli_ftp_get_help(void)
     LOG_I("     sslenble      : Whether ssl is enabled");
     LOG_I("                     0: Disable SSL");
     LOG_I("                     1: Enable SSL");
-    LOG_I("            sslctype      : Module used as FTP client or FTPS client");
+    LOG_I("            ssltype      : Module used as FTP client or FTPS client");
     LOG_I("                            0 FTP clients");
     LOG_I("                            1 FTPS implicit encryption");
     LOG_I("                            2 FTPS explicit encryption");
@@ -100,7 +100,7 @@ static void print_ftp_list(const ql_ftp_file_info_s *head)
     LOG_I("\n");
 }
 
-int cli_ftp_test(int argc, char *argv[])
+int cli_ftp_test(s32_t argc, char *argv[])
 {
     if (argc < 14)
     {
@@ -209,7 +209,7 @@ void cli_ftp_get_help(void)
 {
     LOG_W("This function is not supported");
 }
-int cli_ftp_test(int argc, char *argv[])
+int cli_ftp_test(s32_t argc, char *argv[])
 {
     LOG_W("This function is not supported");
 }

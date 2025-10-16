@@ -65,7 +65,7 @@ void debug_print(const int level, const char *msg, const char *prefix, const cha
             if(strcmp(msg, "INPUT") == 0)
                 size1 = snprintf(DBG_BUFFER+sizeof(total_size), sizeof(DBG_BUFFER), "%s%s [%-5s]  [%-10s]\t[%s]", prefix, timestamp, msg, file, func);
             else
-                size1 = snprintf(DBG_BUFFER+sizeof(total_size), sizeof(DBG_BUFFER), "%s%s [%-5s]  [%-10s]\t[%s():%d][%d]\t", prefix, timestamp, msg, file, func, line, qosa_task_get_stack_space(thread_id));
+                size1 = snprintf(DBG_BUFFER+sizeof(total_size), sizeof(DBG_BUFFER), "%s%s [%-5s]  [%-10s]\t[%s():%d][%lu]\t", prefix, timestamp, msg, file, func, line, qosa_task_get_stack_space(thread_id));
         }
 		size2 = vsnprintf(DBG_BUFFER+size1+sizeof(total_size), sizeof(DBG_BUFFER)-size1, fmt, arglst);
 		size3 = snprintf(DBG_BUFFER+size1+size2+sizeof(total_size), sizeof(DBG_BUFFER)-size1-size2, "%s", suffix);

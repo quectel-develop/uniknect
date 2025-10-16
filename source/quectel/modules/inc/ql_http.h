@@ -51,9 +51,9 @@ typedef enum
     QL_HTTP_OPT_TIMEOUT,             // uint32_t (seconds)
     QL_HTTP_OPT_WAIT_TIME,           // uint32_t (seconds)
     QL_HTTP_OPT_FILE_TYPE,           // QL_HTTP_FILE_TYPE_E
-    QL_HTTP_OPT_WRITE_FUNCTION,      // callback for handling received response data 
+    QL_HTTP_OPT_WRITE_FUNCTION,      // callback for handling received response data, type: http_user_write_callback
     QL_HTTP_OPT_WRITE_DATA,          // void*, user-defined data passed to write callback
-    QL_HTTP_OPT_READ_FUNCTION,       // callback for providing data to be sent in request
+    QL_HTTP_OPT_READ_FUNCTION,       // callback for providing data to be sent in request, type: http_user_read_callback
     QL_HTTP_OPT_READ_DATA,           // void*, user-defined data passed to read callback
     QL_HTTP_OPT_UNKNOWN
 } QL_HTTP_OPTION_E;
@@ -71,13 +71,14 @@ typedef enum
 typedef enum
 {
     QL_HTTP_USR_EVENT_START = 0,
-    QL_HTTP_USR_EVENT_DATA,
-    QL_HTTP_USR_EVENT_END,
+    QL_HTTP_USR_EVENT_HEADER_DATA,
+    QL_HTTP_USR_EVENT_BODY_DATA,
+    QL_HTTP_USR_EVENT_END
 
 } QL_HTTP_USR_EVENT_E;
 
-typedef void (*user_write_callback)(QL_HTTP_USR_EVENT_E, const char *, size_t, void *);
-    typedef size_t (*user_read_callback)(char *, size_t, void *);
+typedef void (*http_user_write_callback)(QL_HTTP_USR_EVENT_E, const char *, size_t, void *);
+typedef size_t (*http_user_read_callback)(char *, size_t, void *);
 typedef struct ql_http
 {
     at_client_t client;
@@ -92,8 +93,8 @@ typedef struct ql_http
     int content_length;
     int err_code;
     int rsp_code;
-    user_write_callback usr_write_cb;
-    user_read_callback  usr_read_cb;
+    http_user_write_callback usr_write_cb;
+    http_user_read_callback  usr_read_cb;
     void* user_write_data;
     void* user_read_data;
     char* data;

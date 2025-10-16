@@ -216,9 +216,9 @@ struct addrinfo {
 #define htonl(x) (u32_t)PP_HTONL(x)
 #define ntohl(x) (u32_t)PP_NTOHL(x)
 
-u32_t ipaddr_addr(const char *cp);
+u32_t ql_ipaddr_addr(const char *cp);
 
-#define inet_addr(cp)         ipaddr_addr(cp)
+#define inet_addr(cp)         ql_ipaddr_addr(cp)
 /** IPv4 only: get the IP address as an u32_t */
 #define ip4_addr_get_u32(src_ipaddr) ((src_ipaddr)->addr)
 /** 255.255.255.255 */

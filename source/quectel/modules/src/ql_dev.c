@@ -9,7 +9,9 @@
 #include "hal_uart.h"
 #include "qosa_system.h"
 #include "qosa_log.h"
+#include "qosa_time.h"
 #include "sd_fatfs.h"
+#include "ql_dev.h"
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN64)
 #include "windows.h"
@@ -122,4 +124,70 @@ void ql_sdcard_hotplug_proc(void)
     {
         ql_sd_deinit();
     }
+}
+
+int ql_wait_module_ready(at_client_t client, u32_t timeout)
+{
+    int result = 0;
+
+    at_response_t resp = at_create_resp(128, 0, 5000);
+    u64_t start_time = time(NULL);
+
+    while (1)
+    {
+        /* Check whether it is timeout */
+        if (time(NULL) - start_time > timeout)
+        {
+            LOG_E("wait AT client connect timeout(%d tick).", timeout);
+            result = -1;
+            break;
+        }
+
+        if (at_obj_exec_cmd(client, resp, "AT") == QOSA_OK)
+        {
+            result = 0;
+            break;
+        }
+    }
+
+    at_delete_resp(resp);
+    return result;
+}
+
+int ql_echo_mode_enable(at_client_t client, bool onoff)
+{
+    at_response_t resp = at_create_resp_new(128, 0, (5000), NULL);
+    char* cmd = onoff ? "ATE1" : "ATE0";
+
+    at_obj_exec_cmd(client, resp, cmd);
+    at_delete_resp(resp);
+    return 0;
+}
+
+int ql_uart_flow_control_enable(at_client_t client, bool onoff)
+{
+    at_response_t resp = at_create_resp_new(128, 0, (5000), NULL);
+    char* cmd = onoff ? "AT+IFC=2,2" : "AT+IFC=0,0";
+
+    if (at_obj_exec_cmd(client, resp, cmd) < 0)
+    {
+        at_delete_resp(resp);
+        LOG_E("AT+IFC failed.");
+        return -1;
+    }
+    at_delete_resp(resp);
+    return 0;
+}
+
+int ql_at_uart_init(at_client_t client)
+{
+    int ret = 0;
+    qosa_task_sleep_ms(500);
+
+    ret += at_client_init(client, 1024, 1024);
+    ret += ql_wait_module_ready(client, 20000);
+    ret += ql_uart_flow_control_enable(client, true);
+    ret += ql_echo_mode_enable(client, false);
+
+    return ret;
 }

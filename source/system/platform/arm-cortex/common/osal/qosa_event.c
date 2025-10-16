@@ -29,21 +29,21 @@ typedef struct {
 int qosa_event_create(osa_event_t *eventRef)
 {
     // FIX: FAEDEVELOP-135, Jerry Chen modified, 2025-06-23
-    event_t* e = (event_t*)pvPortMalloc(sizeof(event_t));
+    event_t* e = (event_t*)malloc(sizeof(event_t));
 
     if (!e)
         return QOSA_ERROR_NO_MEMORY;
 
     if (qosa_sem_create(&e->event_sem, 0) != QOSA_OK)
     {
-        vPortFree(e);
+        free(e);
         return QOSA_ERROR_NO_MEMORY;
     }
 
     if (qosa_mutex_create(&e->event_mutex) != QOSA_OK)
     {
         qosa_sem_delete(e->event_sem);
-        vPortFree(e);
+        free(e);
         return QOSA_ERROR_NO_MEMORY;
     }
     *eventRef = e;
@@ -65,7 +65,7 @@ int qosa_event_delete(osa_event_t eventRef)
     // Pointer variable is wrong in the API parameter.
     qosa_sem_delete(e->event_sem);
     qosa_mutex_delete(e->event_mutex);
-    vPortFree(e);
+    free(e);
 
     return QOSA_OK;
 }

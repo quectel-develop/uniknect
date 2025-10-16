@@ -43,7 +43,7 @@ static s16_t IAP_Write_Flash_AppBin(u32_t appxaddr,u8_t *appbuf,u32_t appsize)
 {
 	u32_t i = 0, align_num;
 	vu32_t temp_32 = 0;
-	vu8_t temp_8 = 0, sector = 0;
+	vu8_t temp_8 = 0;
 	u32_t WriteAddr = appxaddr, NumToWrite = appsize;
     s16_t ret = 0;
 
@@ -73,7 +73,7 @@ static s16_t IAP_Write_Flash_AppBin(u32_t appxaddr,u8_t *appbuf,u32_t appsize)
 	{
 		for(i = 0; i < NumToWrite; i ++)
 		{
-			temp_8  = appbuf;
+			temp_8  = *appbuf;
 			if(HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, WriteAddr, temp_8) != HAL_OK) //Write data
 			{
                 ret = -1;
@@ -157,14 +157,15 @@ static s16_t Update_Firmware(void)
         Receive_data += br;   //Total number of bytes read
         if (ret || br == 0)
         {
-            ret = -1;
+            if (br != 0)
+                ret = -1;
             break;
         }
 		if (i++ == 0) //The first packet determines the validity of the data and erases the corresponding partition
 		{
 			if(((*(vu32_t*)(Receive_dat_buff+4))&0xFF000000)!=0x08000000) //Check whether the value is 0X08XXXXXX
 			{
-				LOG_D("Invalid upgrade package 0x%x", Receive_dat_buff);
+				LOG_D("Invalid upgrade package 0x%p", Receive_dat_buff);
                 ret = -1;
 				break;
 			}

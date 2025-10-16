@@ -18,6 +18,7 @@
 #include "cli_udp.h"
 #include "cli_udp_server.h"
 #include "cli_net.h"
+#include "cli_fota.h"
 
 Cli_Menu_t cli_fun_table[] = {
     {"getversion",  cli_mcu_firmware_version,       NULL},
@@ -29,6 +30,7 @@ Cli_Menu_t cli_fun_table[] = {
     {"file",        cli_file_test,                  cli_file_get_help},
     {"psm",         cli_psm_test,                   cli_psm_get_help},
     {"reboot",      cli_reboot,                     cli_reboot_help},
+    {"fota",        cli_fota_test,                  cli_fota_get_help},
     {"at",          NULL,                           NULL},
     {"debug",       NULL,                           NULL},
     {"help",        NULL,                           NULL},
@@ -68,14 +70,10 @@ void cli_test_main(void)
     ret += debug_cli_func_reg(fun_cnt, cli_fun_table);
 	#endif
 
-    /* 7. AT Client init */
-    ret += at_client_init(1024, 1024);
+    /* 7. AT UART init */
+    ret += ql_at_uart_init(at_client_get_first());
 
-    /* 8. Create socket */
-    #ifdef __QUECTEL_UFP_FEATURE_SUPPORT_SOCKET__
-    #endif
-
-    /* 9. Network init */
+    /* 8. Network init */
     ret += cli_net_test_init();
 
     if(ret != 0)

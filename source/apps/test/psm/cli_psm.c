@@ -8,10 +8,12 @@ void cli_psm_get_help(void)
 {
     LOG_I("| psm                                                                |");
     LOG_I("|    psm disable                                                     |");
-    LOG_I("|    psm setting - TAU/active time (ex setting 3600 60))             |");
-    LOG_I("|                             0: Requested Periodic TAU              |");
-    LOG_I("|                             1: Requested Active Time               |");
+    LOG_I("|    psm setting TAU/active time (ex setting 3600 60))               |");
     LOG_I("|    psm stat - show psm status                                      |");
+    LOG_I("|    psm pon_trig value(0 or 1)                                      |");
+    LOG_I("|                             1: enter psm                           |");
+    LOG_I("|                             0: exit psm                            |");
+    LOG_I("|    psm powerkey - exit psm                                         |");
 }
 
 int cli_psm_test(s32_t argc, char *argv[])
@@ -67,6 +69,14 @@ int cli_psm_test(s32_t argc, char *argv[])
             LOG_E("PSM query error");
         }
     }
+    else if (strcmp((const char *)argv[1], "pon_trig") == 0)
+    {
+        ql_psm_pon_trig_ctrl(atoi(argv[2]));
+    }
+    else if (strcmp((const char *)argv[1], "powerkey") == 0)
+    {
+        ql_psm_wakeup();
+    }
     else
     {
         LOG_E("Invalid parameter");
@@ -81,7 +91,7 @@ void cli_psm_get_help(void)
 {
     LOG_W("This function is not supported");
 }
-int cli_psm_test(int argc, char *argv[])
+int cli_psm_test(s32_t argc, char *argv[])
 {
     LOG_W("This function is not supported");
 }

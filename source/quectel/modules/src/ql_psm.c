@@ -1,6 +1,8 @@
 #include "QuectelConfig.h"
 #ifdef __QUECTEL_UFP_FEATURE_SUPPORT_PSM__
 #include <at.h>
+#include "main.h"
+#include "hal_common.h"
 #include "ql_net.h"
 #include "ql_psm.h"
 #include "qosa_log.h"
@@ -177,7 +179,7 @@ int ql_psm_settings_write(at_client_t client, ql_psm_setting_s settings)
 	ql_convert_byte_to_binary_str(value, TAU);
 	value = ql_convert_seconds_to_Active_format(settings.Requested_Active_Time);
 	ql_convert_byte_to_binary_str(value, Active);
-	at_response_t resp = at_create_resp_new(256, 0, (3000), NULL);
+	at_response_t resp = at_create_resp_new(256, 0, (5000), NULL);
 	int ret = at_obj_exec_cmd(client, resp, "AT+CPSMS=%d,,,\"%s\",\"%s\"", settings.Mode, TAU, Active);
 	at_delete_resp(resp);
 	return (ret == 0) ? 0 : -1;
@@ -198,7 +200,7 @@ int ql_psm_settings_read(at_client_t client, ql_psm_setting_s *settings)
 		char TAU[9] = {0};
 		char Active[9] = {0};
 		LOG_I("%s", line);
-        if (sscanf(line, "+CPSMS: %d,,,\"%[^\"]\",\"%[^\"]\"",&tmp, TAU, Active) == 3 ||
+        if (sscanf(line, "+CPSMS: %d,,,\"%[^\"]\",\"%[^\"]\"",&tmp, TAU, Active) == 3 || 
             sscanf(line, "+CPSMS: %d,%*[^,],%*[^,],\"%[^\"]\",\"%[^\"]\"",&tmp, TAU, Active) == 3)
 		{
 			settings->Mode = (bool)tmp;
@@ -212,5 +214,19 @@ int ql_psm_settings_read(at_client_t client, ql_psm_setting_s *settings)
 	return -1;
 }
 
+void ql_psm_pon_trig_ctrl(int value)
+{
+    HAL_GPIO_WritePin(GPIOB,GPIO_PIN_0, value);
+    LOG_I("set pon_trig value: %d", value);
+}
+
+void ql_psm_wakeup()
+{
+    HAL_GPIO_WritePin(UFP_PWRKEY_PORT,UFP_PWRKEY_PIN, GPIO_PIN_SET);
+    qosa_task_sleep_ms(500);
+    HAL_GPIO_WritePin(UFP_PWRKEY_PORT,UFP_PWRKEY_PIN, GPIO_PIN_RESET);
+    LOG_I("wakeup modem");
+
+}
 #endif /* __QUECTEL_UFP_FEATURE_SUPPORT_PSM__ */
 

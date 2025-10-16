@@ -66,8 +66,23 @@ typedef enum
     QL_FTP_OPT_SSL_CTXID,           // range 0~5, default 0
     QL_FTP_OPT_SSL_DATA_ADDR,       // QL_FTP_DATA_ADDRESS_MODE_E
     QL_FTP_OPT_REST_ENABLE,         // default true. false: Disable FTP REST command;true: Enable FTP REST command.
+    QL_FTP_OPT_WRITE_FUNCTION,      // Callback for handling DOWNLOADED data received from FTP server
+    QL_FTP_OPT_WRITE_DATA,          // void*, user-defined context passed to the write callback
+    QL_FTP_OPT_READ_FUNCTION,       // Callback for providing data to be UPLOADED to FTP server  
+    QL_FTP_OPT_READ_DATA,           // void*, user-defined context passed to the read callback
     QL_FTP_OPT_UNKNOWN
 } QL_FTP_OPTION_E;
+
+typedef enum
+{
+    QL_FTP_USR_DOWNLOAD_START = 0,
+    QL_FTP_USR_DOWNLOAD_DATA,
+    QL_FTP_USR_DOWNLOAD_END
+
+} QL_FTP_USR_DOWNLOAD_EVENT_E;
+
+typedef void (*ftp_user_write_callback)(QL_FTP_USR_DOWNLOAD_EVENT_E, const char *, size_t, void *);
+typedef size_t (*ftp_user_read_callback)(char *, size_t, void *);
 
 typedef struct ql_ftp_file_info
 {
@@ -96,6 +111,10 @@ typedef struct ql_ftp
     char *modify_time;
     FIL file;
     size_t file_size;
+    ftp_user_write_callback usr_write_cb;
+    ftp_user_read_callback  usr_read_cb;
+    void* user_write_data;
+    void* user_read_data;
     ql_ftp_file_info_s *file_list;
     ql_SSL_Config ssl;
 } ql_ftp_s;
@@ -231,7 +250,7 @@ QL_FTP_ERR_CODE_E ql_ftp_file_size(ql_ftp_t handle, const char *remote_file_name
 /*
 * @brief:  ftp upload file
 * @param handle FTP client handle  returned by ql_ftp_init()
-* @param:  local_file_name: local file name
+* @param:  local_file_name: local file name. if setting write callback, the local_file_name is unused, send data through callback.
 * @param:  remote_file_name: remote file name
 * @return QL_FTP_ERR_CODE_E Error code indicating request status
 */
@@ -241,7 +260,7 @@ QL_FTP_ERR_CODE_E ql_ftp_upload(ql_ftp_t handle, const char *local_file_name, co
  * @brief:  ftp download file
  * @param handle FTP client handle  returned by ql_ftp_init()
  * @param:  remote_file_name: remote file name
- * @param:  local_file_name: local file name
+ * @param:  local_file_name: local file name. if setting read callback, the local_file_name is unused, receive data through callback.  
  * @return QL_FTP_ERR_CODE_E Error code indicating request status
 */
 QL_FTP_ERR_CODE_E ql_ftp_download(ql_ftp_t handle, const char *remote_file_name, const char *local_file_name);

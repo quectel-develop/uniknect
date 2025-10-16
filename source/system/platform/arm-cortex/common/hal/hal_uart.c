@@ -1,6 +1,7 @@
 #include "main.h"
 #ifdef __APP_USE_RTOS__
 #include <stdio.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
@@ -8,7 +9,7 @@
 #include "qosa_log.h"
 #include "hal_uart.h"
 #include "ringbuffer.h"
-
+#include "hal_common.h"
 
 /*###############################################################################################*/
 /*---------------------------------------- Debug UART -------------------------------------------*/
@@ -16,6 +17,9 @@
 extern UART_HandleTypeDef DEBUG_UART_HANDLE;
 uint8_t  g_debug_uart_buf[256];
 uint16_t g_debug_uart_buf_get_len = 0;
+static bool g_flow_control = false;
+static uint8_t *g_uart2_left_data = NULL;
+static size_t g_uart2_left_data_len = 0;
 extern void debug_uart_input_notify(void);
 
 
@@ -146,12 +150,35 @@ ringbuffer_t   g_uart_rb = {.buffer = NULL, .buffer_size = 0, .head = 0, .tail =
 static uint8_t g_uart_rb_buf[RINGBUFFER_SIZE] = {0};
 static event_callback_t g_rx_ind_cb = NULL;
 
-
 static s32_t rt_device_cb(void *buffer, s32_t size)
 {
-    ringbuffer_put(&g_uart_rb, buffer, size);
+    int ret = ringbuffer_put(&g_uart_rb, buffer, size);
     if (g_rx_ind_cb)
         g_rx_ind_cb();
+    if (ret < size)
+    {
+        if (!g_flow_control)
+        {
+            HAL_GPIO_WritePin(UFP_AT_UART_RTS_PORT, UFP_AT_UART_RTS_PIN, GPIO_PIN_SET);
+            g_flow_control = true;
+        }
+        if (g_uart2_left_data != NULL && g_uart2_left_data_len > 0)
+        {
+            uint8_t* temp_buffer = (uint8_t*)malloc(g_uart2_left_data_len + size - ret);
+            memcpy(temp_buffer, g_uart2_left_data, g_uart2_left_data_len);
+            memcpy(temp_buffer + g_uart2_left_data_len, buffer + ret, size - ret);
+            free(g_uart2_left_data);
+            g_uart2_left_data = temp_buffer;
+            g_uart2_left_data_len += size - ret;
+        }
+        else
+        {
+            g_uart2_left_data = (uint8_t*)malloc(size - ret);
+            memcpy(g_uart2_left_data, buffer + ret, size - ret);
+            g_uart2_left_data_len = size - ret;
+        }
+        return QOSA_ERROR_BUSY;
+    }
     return QOSA_OK;
 }
 
@@ -179,6 +206,7 @@ void USER_AT_UART_RxIdleCallback(UART_HandleTypeDef *huart)
     /* Already received */
     if (huart->RxXferSize == __HAL_DMA_GET_COUNTER(huart->hdmarx)) // just interrupted no data
     {
+        g_head_ptr = 0;
         return;
     }
     tail_ptr = huart->RxXferSize - __HAL_DMA_GET_COUNTER(huart->hdmarx);
@@ -337,6 +365,8 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 
 void at_uart_hardware_init(void)
 {
+    if(g_uart_rb.buffer == NULL)
+        ringbuffer_init(&g_uart_rb, g_uart_rb_buf, RINGBUFFER_SIZE);
     __HAL_UART_ENABLE_IT(&AT_UART_HANDLE, UART_IT_IDLE); // Enable IDLE interrupt
     HAL_UART_Receive_DMA(&AT_UART_HANDLE, (uint8_t *)g_uart_buf, sizeof(g_uart_buf)/sizeof(g_uart_buf[0])); // DMA reception
 }
@@ -351,11 +381,23 @@ int qosa_uart_open(void)
 
 int qosa_uart_read(int pos, const char *buffer, size_t size)
 {
-    if(g_uart_rb.buffer == NULL)
-        ringbuffer_init(&g_uart_rb, g_uart_rb_buf, RINGBUFFER_SIZE);
-
-    if(ringbuffer_used_length(&g_uart_rb) > 0)
-        return ringbuffer_get(&g_uart_rb, (uint8_t*)buffer, size);
+    if (NULL == g_uart_rb.buffer)
+        return 0;
+    if(ringbuffer_length(&g_uart_rb) > 0)
+    {
+        if (ringbuffer_length(&g_uart_rb) < g_uart_rb.buffer_size / 3 && g_flow_control)
+        {
+            ringbuffer_put(&g_uart_rb, g_uart2_left_data, g_uart2_left_data_len);
+            free(g_uart2_left_data);
+            g_uart2_left_data = NULL;
+            g_uart2_left_data_len = 0;
+            HAL_GPIO_WritePin(UFP_AT_UART_RTS_PORT, UFP_AT_UART_RTS_PIN, GPIO_PIN_RESET);
+            g_flow_control = false;
+            LOG_I("stop flow control");
+        }
+        int get_length =  ringbuffer_get(&g_uart_rb, (uint8_t*)buffer, size);
+       return get_length;
+    }
 
     return 0;
 }

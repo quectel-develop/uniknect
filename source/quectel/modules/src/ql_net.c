@@ -24,8 +24,10 @@ static void ql_net_ntp(struct at_client *client, const char *data, size_t size, 
         tm.tm_hour += tz_sign_factor * tz_offset / 4;
         tm.tm_isdst = -1;  // Automatically judge DST
         update_ntp_time(mktime(&tm));
-        qosa_sem_release(s_net_sem);
     }
+    else 
+        LOG_W("NTP failed.");
+    qosa_sem_release(s_net_sem);
 }
 
 static const struct at_urc s_net_urc_table[] =
@@ -33,47 +35,11 @@ static const struct at_urc s_net_urc_table[] =
 	{"+QNTP:", "\r\n", ql_net_ntp}
 };
 
-static int ql_net_connect_module(ql_net_t handle, u32_t timeout)
-{
-    int result = 0;
-    at_response_t resp = NULL;
-    u64_t start_time = 0;
-
-    resp = at_create_resp(128, 0, 2000);
-    if (NULL == resp)
-    {
-        LOG_E("no memory for AT client response object.");
-        return -1;
-    }
-    start_time = time(NULL);
-
-    while (1)
-    {
-        /* Check whether it is timeout */
-        if (time(NULL) - start_time > timeout)
-        {
-            LOG_E("wait AT client connect timeout(%d tick).", timeout);
-            result = -1;
-            break;
-        }
-
-        at_obj_exec_cmd(handle->client, resp, "AT");
-        if (handle->client->resp_status == AT_RESP_OK)
-        {
-            result = 0;
-            break;
-        }
-    }
-
-    at_delete_resp(resp);
-    return result;
-}
-
 static void ql_net_query_moudle_type(ql_net_t handle)
 {
     at_response_t query_resp = NULL;
     // Creating a response object for AT command
-    query_resp = at_create_resp(256, 0, (500));
+    query_resp = at_create_resp(256, 0, (5000));
     if (NULL == query_resp)
     {
         LOG_E("No memory for response object.");
@@ -106,7 +72,7 @@ static int ql_net_query_sim_state(ql_net_t handle)
     const char *line;
 
     // Creating a response object for AT command
-    resp = at_create_resp(1024, 0, (200));
+    resp = at_create_resp(1024, 0, (3000));
     if (resp == NULL)
     {
         LOG_E("No memory for AT response.\n");
@@ -173,7 +139,7 @@ static int ql_net_check_creg(ql_net_t handle)
 {
     int status = -1;
     at_response_t query_resp = NULL;
-    query_resp = at_create_resp_new(128, 0, (500), NULL);
+    query_resp = at_create_resp_new(128, 0, (3000), NULL);
     if (at_obj_exec_cmd(handle->client, query_resp, "AT+CREG?") < 0)
     {
         at_delete_resp(query_resp);
@@ -202,7 +168,7 @@ static int ql_net_check_cereg(ql_net_t handle)
 {
     int status = -1;
     at_response_t query_resp = NULL;
-    query_resp = at_create_resp_new(128, 0, (500), NULL);
+    query_resp = at_create_resp_new(128, 0, (3000), NULL);
     if (at_obj_exec_cmd(handle->client, query_resp, "AT+CEREG?") < 0)
     {
         at_delete_resp(query_resp);
@@ -381,12 +347,6 @@ ql_net_t ql_net_init(at_client_t client)
     handle->contextid = 1;
     memcpy(handle->ip,  "127.0.0.1", strlen("127.0.0.1"));
     handle->ip[strlen("127.0.0.1")] = '\0';
-    if (ql_net_connect_module(handle, 20000) != 0)
-    {
-        LOG_E("network init failed, can not connect to module!");
-        free(handle);
-        return NULL;
-    }
     if (!s_global_net_init)
     {
         at_set_urc_table(s_net_urc_table, sizeof(s_net_urc_table) / sizeof(s_net_urc_table[0]));
@@ -424,19 +384,25 @@ bool ql_net_set_opt(ql_net_t handle, QL_NET_OPTION_E option, ...)
                         content->apn, content->username, content->password);
         break;
     case QL_NET_OPTINON_SCANMODE:
-        if (get_module_type() == MOD_TYPE_BG95 || get_module_type() == MOD_TYPE_BG96)
+        if (get_module_type() == MOD_TYPE_BG770 || 
+            get_module_type() == MOD_TYPE_BG96 || (get_module_type() == MOD_TYPE_BG95 &&
+                                                strstr(get_module_type_name(), "BG95-M3") == NULL &&
+                                                strstr(get_module_type_name(), "BG95-M5") == NULL &&
+                                                strstr(get_module_type_name(), "BG95-M8") == NULL))
             return false;
         snprintf(cmd, sizeof(cmd), "AT+QCFG=\"nwscanmode\",%d,1", va_arg(args, int));
         break;
     case QL_NET_OPTINON_SCANSEQ:
-        if (get_module_type() != MOD_TYPE_BG95 && get_module_type() != MOD_TYPE_BG96)
-            return false;
         snprintf(cmd, sizeof(cmd), "AT+QCFG=\"nwscanseq\",%s,1", va_arg(args, const char *));
         break;
     case QL_NET_OPTINON_IOTOPMODE:
-        if (get_module_type() != MOD_TYPE_BG95 && get_module_type() != MOD_TYPE_BG96)
+        if (get_module_type() != MOD_TYPE_BG95 && get_module_type() != MOD_TYPE_BG96 && get_module_type() != MOD_TYPE_BG770)
             return false;
         snprintf(cmd, sizeof(cmd), "AT+QCFG=\"iotopmode\",%d,1", va_arg(args, int));
+        break;
+    case QL_NET_OPTINON_BAND:
+        ql_net_band_s *band = va_arg(args, ql_net_band_s*);
+        snprintf(cmd, sizeof(cmd), "AT+QCFG=\"band\",%s,%s,%s", band->band1, band->band2, band->band3);
         break;
     default:
         LOG_W("Unsupported network config option\n");
@@ -444,7 +410,7 @@ bool ql_net_set_opt(ql_net_t handle, QL_NET_OPTION_E option, ...)
     }
     va_end(args);
 
-    at_response_t resp = at_create_resp_new(256, 0, 1000, NULL);
+    at_response_t resp = at_create_resp_new(256, 0, 5000, NULL);
 
     if (at_exec_cmd(resp, cmd) < 0)
     {
@@ -463,11 +429,11 @@ QL_NET_ERR_CODE_E ql_net_attach(ql_net_t handle)
 
     if (NULL == handle)
         return QL_NET_ERR_NOINIT;
-    if (ql_net_query_register_status(handle, 60) != 0)
+    if (ql_net_query_register_status(handle, 120) != 0)
     {
         ql_net_set_cfun_mode(handle, 0);
         ql_net_set_cfun_mode(handle, 1);
-        if (ql_net_query_register_status(handle, 60) != 0)
+        if (ql_net_query_register_status(handle, 120) != 0)
             return QL_NET_ERR_REGISTER;
     }
 
@@ -501,32 +467,48 @@ QL_NET_ERR_CODE_E ql_net_attach(ql_net_t handle)
     }
 
     ql_net_query_actice_state(handle);
-    net_request_ntp_time(handle, "ntp.aliyun.com");
+    net_request_ntp_time(handle, "pool.ntp.org");
     return QL_NET_OK;
 }
 
-int ql_net_get_rssi(ql_net_t handle)
+int ql_net_get_signal_info(ql_net_t handle, int *strength, int *quality)
 {
-    int csq = -1;
+    if (NULL == handle)
+        return -1;
+    int result = -1;
     at_response_t query_resp = NULL;
-    query_resp = at_create_resp(128, 0, (500));
-    if (at_obj_exec_cmd(handle->client, query_resp, "AT+CSQ") < 0)
+    query_resp = at_create_resp_new(128, 0, (500), NULL);
+    if (at_obj_exec_cmd(handle->client, query_resp, "AT+QENG=\"servingcell\"") < 0)
     {
-        LOG_E("get network rssi failed");
+        LOG_E("get network singal strength failed");
         return -1;
     }
     for (int i = 0; i < query_resp->line_counts; i++)
     {
         const char *line = at_resp_get_line(query_resp, i + 1);
-
-        if (sscanf(line, "+CSQ: %d,*d", &csq) == 1)
+        if (strstr(line, "+QENG:") == NULL)
+            continue;
+        if (strstr(line, "GSM") != NULL)
         {
-            break;
+            result = sscanf(line, "+QENG: \"servingcell\",\"%*[^\"]\",\"%*[^\"]\",%*d,%*d,%*[^,],%*[^,],"
+                "%*d,%*d,%*d,%d", strength);
+            result += 1;
+            *quality = 0;
+            LOG_W("GSM does not support signal quality");
+        }
+        else if (strstr(line, "WCDMA") != NULL)
+        {
+            result = sscanf(line, "+QENG: \"servingcell\",\"%*[^\"]\",\"%*[^\"]\",%*d,%*d,%*[^,],%*[^,],"
+                "%*d,%*d,%*d,%d, %d", strength, quality);
+        }
+        else
+        {
+            result = sscanf(line, "+QENG: \"servingcell\",\"%*[^\"]\",\"%*[^\"]\",\"%*[^\"]\",%*d,"
+                "%*d,%*[^,],%*d,%*d,%*d,%*d,%*d,%*[^,],%d,%*d,%*d,%d", strength, quality);
         }
     }
-    int rssi = -113 + 2 * csq;
     at_delete_resp(query_resp);
-    return rssi;
+    return result == 2 ? 0 : -1;
 }
 
 const char* ql_net_get_ip(ql_net_t handle)

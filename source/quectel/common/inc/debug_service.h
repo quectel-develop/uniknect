@@ -19,7 +19,7 @@
 typedef struct
 {
 	char name[NAME_MAX_LEN];
-	int (*func)(int argc, char *argv[]);
+	int (*func)(s32_t argc, char *argv[]);
     void (*help)(void);
 }Cli_Menu_t;
 

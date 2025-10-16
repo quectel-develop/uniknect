@@ -344,7 +344,7 @@ char* ipaddr_ntoa(const ip_addr_t *addr)
  * @param cp IP address in ascii represenation (e.g. "127.0.0.1")
  * @return ip address in network order
  */
-u32_t ipaddr_addr(const char *cp)
+u32_t ql_ipaddr_addr(const char *cp)
 {
   ip_addr_t val;
 

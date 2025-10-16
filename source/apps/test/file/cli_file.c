@@ -228,7 +228,7 @@ void cli_file_get_help(void)
 {
     LOG_W("This function is not supported");
 }
-int cli_file_test(int argc, char *argv[])
+int cli_file_test(s32_t argc, char *argv[])
 {
     LOG_W("This function is not supported");
 }

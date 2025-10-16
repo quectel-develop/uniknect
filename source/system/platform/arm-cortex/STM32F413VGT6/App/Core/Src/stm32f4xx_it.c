@@ -64,6 +64,9 @@ extern DMA_HandleTypeDef hdma_usart2_rx;
 extern DMA_HandleTypeDef hdma_usart2_tx;
 extern UART_HandleTypeDef huart2;
 extern UART_HandleTypeDef huart6;
+
+extern void USER_UART2_RxIdleCallback(UART_HandleTypeDef *huart);
+extern void USER_UART6_RxIdleCallback(UART_HandleTypeDef *huart);
 /* USER CODE BEGIN EV */
 
 /* USER CODE END EV */

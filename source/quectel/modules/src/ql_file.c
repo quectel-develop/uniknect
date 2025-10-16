@@ -51,8 +51,14 @@ static void ql_write_cb(const char *data, size_t len, void* arg)
             at_client_obj_send_nolock(stream->client, stream->ptr + stream->len - left_len, write_len, false);
             left_len -= write_len;
         }
-        memset(buffer, 0, sizeof(buffer));
-        at_client_self_recv(stream->client, buffer, sizeof(buffer), 60 * 1000, 1, true);
+        while (true)
+        {
+            memset(buffer, 0, sizeof(buffer));
+            at_client_self_recv(stream->client, buffer, sizeof(buffer), 60 * 1000, 1, true);
+            if (strcmp(buffer, "\r\n") == 0)
+                continue;
+            break;
+        }
         if (sscanf(buffer, "+QFWRITE: %d,%*d", &stream->len) == 1)
         {
             stream->err = 0;
@@ -122,7 +128,7 @@ static void ql_list_cb(const char *data, size_t len, void* arg)
         }
         ql_file_info_s *file_info = (ql_file_info_s*)malloc(sizeof(ql_file_info_s));
         memset(file_info, 0, sizeof(ql_file_info_s));
-        if (sscanf(buffer, "+QFLST: \"%[^\"]\",%u", file_info->filename, &file_info->filesize) == 2)
+        if (sscanf(buffer, "+QFLST: \"%[^\"]\",%lu", file_info->filename, &file_info->filesize) == 2)
         {
             ql_file_list_append(&stream->file_list, file_info);
         }
@@ -415,7 +421,7 @@ static void ql_upload_cb(const char *data, size_t len, void* arg)
     memset(buffer, 0, QL_MAX_ONCE_LEN);
     while (1)
     {
-        at_client_self_recv(stream->client, buffer, QL_MAX_ONCE_LEN, 2000, 1, true);
+        at_client_self_recv(stream->client, buffer, QL_MAX_ONCE_LEN, 5000, 1, true);
         if (strstr(buffer, "OK\r\n") != NULL)
             break;  
     }

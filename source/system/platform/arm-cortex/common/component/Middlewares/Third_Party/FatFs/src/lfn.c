@@ -31,13 +31,13 @@ WCHAR ff_convert (	/* Converted code, 0 means conversion error */
 	UINT	dir		/* 0: Unicode to OEM code, 1: OEM code to Unicode */
 )
 {
-
+	return chr;
 }
 
 WCHAR ff_wtoupper (	/* Returns upper converted character */
 	WCHAR chr		/* Unicode character to be upper converted (BMP only) */
 )
 {
-
+	return chr;
 }
 #endif

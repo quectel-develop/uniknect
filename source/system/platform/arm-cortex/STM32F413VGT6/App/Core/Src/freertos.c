@@ -23,6 +23,7 @@
 #include "main.h"
 #include "cmsis_os.h"
 
+extern void user_main(void *argument);
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 

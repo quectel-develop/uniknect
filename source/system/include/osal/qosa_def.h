@@ -29,13 +29,13 @@
 #include "cmsis_os2.h"
 #endif
 
-typedef signed    int                   qosa_bool_t;    /**< boolean type */
-typedef unsigned char                   u8_t;
-typedef signed   char                   s8_t;
-typedef unsigned short                  u16_t;
-typedef signed   short                  s16_t;
-typedef unsigned int                    u32_t;
-typedef signed   int                    s32_t;
+typedef signed    int                   qosa_bool_t; /**< boolean type */
+typedef uint8_t   u8_t;
+typedef int8_t    s8_t;
+typedef uint16_t  u16_t;
+typedef int16_t   s16_t;
+typedef uint32_t  u32_t;
+typedef int32_t   s32_t;
 
 #ifdef ARCH_CPU_64BIT
 typedef signed long                     s64_t;      /**< 64bit integer type */

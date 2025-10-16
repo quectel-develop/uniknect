@@ -465,14 +465,21 @@ void ql_mqtt_disconnect(ql_mqtt_t handle)
     handle->status = QL_MQTT_STATUS_DISCONNECTING;
     at_obj_exec_cmd(handle->client, resp, "AT+QMTDISC=%d", handle->client_idx);
     qosa_sem_wait(handle->sem, 31 * 1000);// wait disconnect
-    if (handle->status == QL_MQTT_STATUS_DISCONNECTED)
+    if (strstr(get_module_type_name(), "BG770") == NULL)
     {
-        qosa_sem_wait(handle->sem, 180 * 1000);// wait stat
+        if (handle->status == QL_MQTT_STATUS_DISCONNECTED)
+        {
+            qosa_sem_wait(handle->sem, 180 * 1000);// wait stat
+        }
+        if (handle->status != QL_MQTT_STATUS_CLOSED) 
+        {
+            resp = at_resp_set_info_new(resp, 128, 0, 3000, handle);
+            at_obj_exec_cmd(handle->client, resp, "AT+QMTCLOSE=%d", handle->client_idx);
+        }
     }
-    if (handle->status != QL_MQTT_STATUS_CLOSED) 
+    else
     {
-        resp = at_resp_set_info_new(resp, 128, 0, 3000, handle);
-        at_obj_exec_cmd(handle->client, resp, "AT+QMTCLOSE=%d", handle->client_idx);
+        handle->status = QL_MQTT_STATUS_CLOSED;
     }
     at_delete_resp(resp);
 }
@@ -489,7 +496,9 @@ QL_MQTT_ERR_CODE_E ql_mqtt_pub(ql_mqtt_t handle, const char *topic, const char *
     at_response_t resp = at_create_resp_new(128, 0, 3000, handle);
     const char *cmd = NULL;
     uint16_t mid = 0;
-    if (strstr(get_module_type_name(), "BG95") != NULL)
+    if (strstr(get_module_type_name(), "BG95") != NULL ||
+        strstr(get_module_type_name(), "BG96") != NULL ||
+        strstr(get_module_type_name(), "BG770") != NULL)
     {
         cmd = "AT+QMTPUBEX";
     }

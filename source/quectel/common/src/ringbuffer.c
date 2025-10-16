@@ -25,32 +25,15 @@ int16_t ringbuffer_init(ringbuffer_t* rb, uint8_t* bf_pool, uint16_t size)
     rb->buffer_size = ALIGN_DOWN(size, 4);
     rb->head   = 0;
     rb->tail   = 0;
-
+    rb->size   = 0;
     return 0;
 }
 
 
-/**
-  * @brief  Calculate the length of data that has been used in the ringbuffer
-  * @param  rb  Ringbuffer
-  * @retval The length of data that has been used in the ringbuffer
-  */
-uint16_t ringbuffer_used_length(ringbuffer_t* rb)
+uint16_t ringbuffer_length(ringbuffer_t* rb)
 {
-    return ((rb->buffer_size - rb->head + rb->tail) % rb->buffer_size);
+    return rb->size;
 }
-
-
-/**
-  * @brief  Calculate the remaining data length of the ringbuffer
-  * @param  rb  Ringbuffer
-  * @retval The remaining data length of the ringbuffer
-  */
-uint16_t ringbuffer_remain_length(ringbuffer_t* rb)
-{
-    return (rb->buffer_size - ringbuffer_used_length(rb));
-}
-
 
  /**
   * @brief  Write data to the ringbuffer
@@ -64,21 +47,27 @@ uint16_t ringbuffer_put(ringbuffer_t* rb, const uint8_t* data, uint16_t data_len
     if(rb == NULL || rb->buffer == NULL)
         return 0;
 
-    uint16_t remain_len = rb->buffer_size - 1 - rb->tail;
-    uint16_t put_len = MIN(data_length, (remain_len + rb->head) % rb->buffer_size);
+    uint16_t free_len = rb->buffer_size - rb->size;
+    uint16_t write_len = MIN(data_length, free_len);
+    if (write_len == 0)
+        return 0;
 
-    remain_len++;
+    uint16_t tail = rb->tail;
+    uint16_t contigious_len = rb->buffer_size - tail;
 
-    memcpy(&rb->buffer[rb->tail], data, MIN(put_len, remain_len));
-
-    if (remain_len < put_len)
+    if (write_len <= contigious_len)
     {
-        memcpy(&rb->buffer[0], data + remain_len, put_len - remain_len);
+        memcpy(rb->buffer + tail, data, write_len);
+        rb->tail = (tail + write_len) % rb->buffer_size;
     }
-
-    rb->tail = (rb->tail + put_len) % rb->buffer_size;
-
-    return put_len;
+    else
+    {
+        memcpy(rb->buffer + tail, data, contigious_len);
+        memcpy(rb->buffer, data + contigious_len, write_len - contigious_len);
+        rb->tail = write_len - contigious_len;
+    }
+    rb->size += write_len;
+    return write_len;
 }
 
 
@@ -94,20 +83,28 @@ uint16_t ringbuffer_get(ringbuffer_t* rb, uint8_t* data, uint16_t data_length)
     if(rb == NULL || rb->buffer == NULL)
         return 0;
 
-    uint16_t used_len = ringbuffer_used_length(rb);
-    uint16_t read_len = MIN(data_length, used_len);
+    uint16_t read_len = MIN(data_length, rb->size);
     uint16_t head = rb->head;
-    uint16_t i;
+    if (0 == read_len)
+        return 0;
+    uint16_t contigious_len = rb->buffer_size - rb->head;
 
-    if (read_len != 0)
+    if (read_len <= contigious_len)
     {
-        for (i = 0; i < read_len; i++)
-        {
-            data[i] = rb->buffer[head];
-            head = (head + 1) % rb->buffer_size;
-        }
-		rb->head = (rb->head + read_len) % rb->buffer_size;
+        uint8_t* src = rb->buffer + rb->head;
+        memcpy(data, src, read_len);
+        rb->head += read_len;
+        rb->head = (head + read_len) % rb->buffer_size;
     }
-
+    else
+    {
+        uint8_t* src1 = rb->buffer + rb->head;
+        uint8_t* src2 = rb->buffer;
+        memcpy(data, src1, contigious_len);
+        memcpy(data + contigious_len, src2, read_len - contigious_len);
+        rb->head = read_len - contigious_len;
+    }
+    rb->size -= read_len;
     return read_len;
 }
+

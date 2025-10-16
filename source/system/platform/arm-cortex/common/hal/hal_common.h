@@ -29,5 +29,10 @@
 #define UFP_VBAT_EN_PORT        GPIOB
 #define UFP_VBAT_EN_PIN         GPIO_PIN_6
 
+#define UFP_AT_UART_CTS_PORT    GPIOA
+#define UFP_AT_UART_CTS_PIN     GPIO_PIN_0
+#define UFP_AT_UART_RTS_PORT    GPIOA
+#define UFP_AT_UART_RTS_PIN     GPIO_PIN_1
+
 
 #endif /* __HAL_COMMON_H */

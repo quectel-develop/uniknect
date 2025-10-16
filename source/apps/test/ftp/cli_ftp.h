@@ -7,7 +7,7 @@
 #include "qosa_def.h"
 
 void cli_ftp_get_help(void);
-int cli_ftp_test(int argc, char *argv[]);
+int cli_ftp_test(s32_t argc, char *argv[]);
 
 void cli_example_ftp();
 #endif /* __CLI_FTP_H__ */

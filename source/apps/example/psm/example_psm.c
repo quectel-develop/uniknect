@@ -3,6 +3,7 @@
 
 #ifdef __QUECTEL_UFP_FEATURE_SUPPORT_PSM__
 #include "ql_psm.h"
+#include "qosa_log.h"
 
 
 void example_psm(void)

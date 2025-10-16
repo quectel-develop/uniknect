@@ -214,11 +214,11 @@ static void user_http_callback(QL_HTTP_USR_EVENT_E event, const char *data, size
 {
     static FIL fil;
     size_t size = 0;
-    total_len += len;
     switch (event)
     {
     case QL_HTTP_USR_EVENT_START:
     {
+        total_len = 0;
         LOG_I("open file: %s", (char*)arg);
         FRESULT res = f_open(&fil, (char*)arg, FA_CREATE_ALWAYS | FA_WRITE);
         if (res != FR_OK)
@@ -227,8 +227,12 @@ static void user_http_callback(QL_HTTP_USR_EVENT_E event, const char *data, size
         }
     }
         break;
-    case QL_HTTP_USR_EVENT_DATA:
+    case QL_HTTP_USR_EVENT_HEADER_DATA:
+        LOG_I("header data: %s", (char*)data);
+        break;
+    case QL_HTTP_USR_EVENT_BODY_DATA:
         at_print_raw_cmd("http recv data", data, len);
+        total_len += len;
         if ((fil.flag & FA_WRITE))
             f_write(&fil, data, len, &size);
         break;
@@ -347,7 +351,7 @@ void cli_http_get_help(void)
 {
     LOG_W("This function is not supported");
 }
-int cli_http_test(int argc, char *argv[])
+int cli_http_test(s32_t argc, char *argv[])
 {
     LOG_W("This function is not supported");
 }

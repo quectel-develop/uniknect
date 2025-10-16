@@ -101,7 +101,7 @@ at_response_t at_create_resp_new(size_t buf_size, size_t line_num, int32_t timeo
     resp->timeout = timeout;
     resp->self_func = NULL;
     resp->arg = arg;
-    return resp;   
+    return resp;
 }
 at_response_t at_create_resp_by_selffunc(size_t buf_size, size_t line_num, int32_t timeout, resp_func func)
 {
@@ -380,7 +380,7 @@ int at_obj_exec_cmd(at_client_t client, at_response_t resp, const char *cmd_expr
     }
 
     qosa_mutex_lock(client->lock, QOSA_WAIT_FOREVER);
-    
+
     client->resp_status = AT_RESP_OK;
     client->resp = resp;
     client->self_func = resp->self_func;
@@ -401,7 +401,6 @@ int at_obj_exec_cmd(at_client_t client, at_response_t resp, const char *cmd_expr
 
     if (resp != NULL)
     {
-
         if (qosa_sem_wait(client->resp_notice, resp->timeout) != QOSA_OK)
         {
             LOG_W("execute command (%.*s) timeout (%d ticks)!", client->last_cmd_len, client->send_buf, resp->timeout);
@@ -437,12 +436,12 @@ int at_obj_exec_cmd_with_data(at_client_t client, const char *cmd, const char *d
     while (sent_len < size)
     {
         need_len = ((size - sent_len) > QL_MODULE_SEND_MAX_SIZE) ? QL_MODULE_SEND_MAX_SIZE : (size - sent_len);
-        
+
         resp = at_create_resp_new(128, 0, 5 * RT_TICK_PER_SECOND, NULL);
         snprintf(cmd_exc, sizeof(cmd_exc), cmd, need_len);
         if (at_obj_exec_cmd(client, resp, cmd_exc) < 0)
             break;
-        
+
         need_len = at_client_obj_send(client, data + sent_len, need_len, true);
         qosa_sem_wait(client->resp_notice, 1000);
         at_delete_resp(resp);
@@ -483,7 +482,7 @@ size_t at_client_obj_send(at_client_t client, const char *buf, size_t size, bool
     else
         LOG_I("sendline %d bytes data", size);
 #endif
-    
+
     qosa_mutex_lock(client->lock, QOSA_WAIT_FOREVER);
 
     len = at_utils_send(0, buf, size);
@@ -908,7 +907,7 @@ static void client_parser(void *argv)
                         /* get the end data by response line, return response state END_OK.*/
                         client->resp_status = AT_RESP_OK;
                     }
-                    
+
                     else
                     {
                         //LOG_D("continue");
@@ -1029,9 +1028,10 @@ __exit:
         memset(client, 0x00, sizeof(struct at_client));
     }
 
-    LOG_D("%s over(%x)",__FUNCTION__, client->parser);
+    LOG_D("%s done.",__FUNCTION__);
     return result;
 }
+
 
 /**
  * AT client initialize.
@@ -1043,17 +1043,17 @@ __exit:
  *        -1 : initialize failed
  *        -5 : no memory
  */
-int at_client_init(size_t recv_bufsz, size_t send_bufsz)
+int at_client_init(at_client_t client, size_t recv_bufsz, size_t send_bufsz)
 {
-    int         idx = 0;
+    // int         idx = 0;
     int         result = QOSA_OK;
     int         open_result = QOSA_OK;
-    at_client_t client = NULL;
+    // at_client_t client = NULL;
 
     QOSA_ASSERT(recv_bufsz > 0);
     QOSA_ASSERT(send_bufsz > 0);
 
-    client = &at_client_table[idx];
+    // client = &at_client_table[idx];
     client->recv_bufsz = recv_bufsz;
     client->send_bufsz = send_bufsz;
 

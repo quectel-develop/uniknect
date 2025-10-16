@@ -25,7 +25,7 @@ int cli_net_test_init(void)
         return -1;
     }
     ql_net_set_opt(s_net_handle, QL_NET_OPTINON_SCANMODE, 0);
-    ql_net_set_opt(s_net_handle, QL_NET_OPTINON_SCANSEQ, "0203");
+    // ql_net_set_opt(s_net_handle, QL_NET_OPTINON_SCANSEQ, "0203");
     ql_net_set_opt(s_net_handle, QL_NET_OPTINON_IOTOPMODE, 2);
     if (ql_net_attach(s_net_handle) != QL_NET_OK)
     {
@@ -33,8 +33,13 @@ int cli_net_test_init(void)
         return -1;
     }
     qosa_task_sleep_ms(2000);
-    int rssi = ql_net_get_rssi(s_net_handle);
-    LOG_I("network rssi = %d", rssi);
+    int strength = 0;
+    int quality = 0;
+    int ret = ql_net_get_signal_info(s_net_handle, &strength, &quality);
+    if (0 == ret)
+        LOG_I("network strength = %d, quality = %d", strength, quality);
+    else
+        LOG_E("get signal strength failed");
     broadcast_send_msg_myself(QL_BROADCAST_NET_DATACALL_SUCCESS, 0, 0, 0);
     return 0;
 }
@@ -67,8 +72,13 @@ int cli_net_test(s32_t argc, char *argv[])
         return -1;
     }
     qosa_task_sleep_ms(2000);
-    int rssi = ql_net_get_rssi(s_net_handle);
-    LOG_I("network rssi = %d", rssi);
+    int strength = 0;
+    int quality = 0;
+    int ret = ql_net_get_signal_info(s_net_handle, &strength, &quality);
+    if (0 == ret)
+        LOG_I("network strength = %d, quality = %d", strength, quality);
+    else
+        LOG_E("get signal strength failed");
     return 0;
 }
 #endif /* __QUECTEL_UFP_FEATURE_SUPPORT_NETWORK__ */

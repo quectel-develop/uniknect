@@ -18,11 +18,11 @@ static void http_rsp_callback(QL_HTTP_USR_EVENT_E event, const char *data, size_
     static FIL fil;
     size_t size = 0;
     static int total_len = 0;
-    total_len += len;
     switch (event)
     {
     case QL_HTTP_USR_EVENT_START:
     {
+        total_len = 0;
         FRESULT res = f_open(&fil, (char*)arg, FA_CREATE_ALWAYS | FA_WRITE);
         if (res != FR_OK)
         {
@@ -30,7 +30,11 @@ static void http_rsp_callback(QL_HTTP_USR_EVENT_E event, const char *data, size_
         }
     }
         break;
-    case QL_HTTP_USR_EVENT_DATA:
+    case QL_HTTP_USR_EVENT_HEADER_DATA:
+        LOG_I("header data: %s", (char*)data);
+        break;
+    case QL_HTTP_USR_EVENT_BODY_DATA:
+        total_len += len;
         if ((fil.flag & FA_WRITE))
             f_write(&fil, data, len, &size);
         break;
@@ -51,8 +55,6 @@ void example_test_get_extend()
     // ql_http_setopt(handle, QL_HTTP_OPT_RESPONSE_HEADER, true);
     // ql_http_setopt(handle, QL_HTTP_OPT_SSL_CONTEXT_ID, 0);
     // ql_http_setopt(handle, QL_HTTP_OPT_CONTENT_TYPE, app_urlencoded);
-    // header_list = ql_http_header_append(header_list, "Content-Type: application/json");
-    // header_list = ql_http_header_append(header_list, "Accept: application/json");
     // char headers[1024] = {0};
     // snprintf(headers, sizeof(headers), "%s", "Accept: application/json");
     // ql_http_setopt(handle, QL_HTTP_OPT_CUSTOM_HEADER, headers);
@@ -75,8 +77,6 @@ void example_test_get()
     // ql_http_setopt(handle, QL_HTTP_OPT_RESPONSE_HEADER, true);
     // ql_http_setopt(handle, QL_HTTP_OPT_SSL_CONTEXT_ID, 0);
     // ql_http_setopt(handle, QL_HTTP_OPT_CONTENT_TYPE, app_urlencoded);
-    // header_list = ql_http_header_append(header_list, "Content-Type: application/json");
-    // header_list = ql_http_header_append(header_list, "Accept: application/json");
     // char headers[1024] = {0};
     // snprintf(headers, sizeof(headers), "%s", "Accept: application/json");
     // ql_http_setopt(handle, QL_HTTP_OPT_CUSTOM_HEADER, headers);
