@@ -14,7 +14,7 @@ void cli_fota_get_help(void)
     LOG_I("              contextid      : PDP context ID, range: 1-16");
     LOG_I("              url            : HTTP(S) server URL");
     LOG_I("              location       : 0-scard, 1-flash, now only support sdcard");
-    LOG_I("              save_path      : File path on the storage");
+    LOG_I("              save_path      : FotaFile.bin(File path on the storage)");
     LOG_I("              sslenble       : Whether ssl is enabled, 0-disabled, 1-enabled");
     LOG_I("              sslctxid       : SSL context ID used for https, range: 0-5");
     LOG_I("              ciphersuite    : Numeric type in HEX format. SSL cipher suites");
@@ -41,7 +41,7 @@ void cli_fota_get_help(void)
     LOG_I("              wrok_dir       : Working directory on the FTP(S) server");
     LOG_I("              rem_name       : The file name of the server");
     LOG_I("              location       : 0-scard, 1-flash, now only support sdcard");
-    LOG_I("              save_path      : File path on the storage");
+    LOG_I("              save_path      : FotaFile.bin(File path on the storage)");
     LOG_I("              sslenble       : Whether ssl is enabled, 0-disabled, 1-enabled");
     LOG_I("              ssltype        : Module used as FTP client or FTPS client");
     LOG_I("                               0 FTP clients");

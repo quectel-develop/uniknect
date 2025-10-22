@@ -105,6 +105,7 @@ struct at_client
     osa_mutex_t          lock;
     at_response_t        resp;
     osa_sem_t            resp_notice;
+    osa_sem_t            data_send_notice;
     at_resp_status_t     resp_status;
     struct at_urc_table *urc_table;
     size_t               urc_table_size;

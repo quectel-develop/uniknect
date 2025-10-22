@@ -392,6 +392,7 @@ int at_obj_exec_cmd(at_client_t client, at_response_t resp, const char *cmd_expr
     }
     while (qosa_sem_wait(client->resp_notice, 0) == QOSA_OK); // clear last notice
     va_start(args, cmd_expr);
+    memset(client->send_buf, 0, client->send_bufsz);
     client->last_cmd_len = at_vprintfln(client->send_buf, client->send_bufsz, cmd_expr, args);
     if (client->last_cmd_len > 2)
     {
@@ -443,7 +444,7 @@ int at_obj_exec_cmd_with_data(at_client_t client, const char *cmd, const char *d
             break;
 
         need_len = at_client_obj_send(client, data + sent_len, need_len, true);
-        qosa_sem_wait(client->resp_notice, 1000);
+        qosa_sem_wait(client->data_send_notice, 1000);
         at_delete_resp(resp);
         qosa_task_sleep_ms(10);
 
@@ -844,7 +845,7 @@ static void client_parser(void *argv)
             {
                 if (strstr(client->recv_line_buf, "SEND FAIL"))
                     client->resp_status = AT_RESP_ERROR;
-                qosa_sem_release(client->resp_notice);
+                qosa_sem_release(client->data_send_notice);
             }
             else if (client->urc != NULL)
             {
@@ -898,7 +899,9 @@ static void client_parser(void *argv)
                         /* get the end data by response result, return response state END_OK. */
                         client->resp_status = AT_RESP_OK;
                     }
-                    else if (strstr(client->recv_line_buf, AT_RESP_END_ERROR) || (memcmp(client->recv_line_buf, AT_RESP_END_FAIL, strlen(AT_RESP_END_FAIL)) == 0))
+                    else if ((memcmp(client->recv_line_buf, AT_RESP_END_ERROR, strlen(AT_RESP_END_ERROR)) == 0)
+                          || (memcmp(client->recv_line_buf, AT_RESP_CME_ERR, strlen(AT_RESP_CME_ERR)) == 0)
+                          || (memcmp(client->recv_line_buf, AT_RESP_END_FAIL, strlen(AT_RESP_END_FAIL)) == 0))
                     {
                         client->resp_status = AT_RESP_ERROR;
                     }
@@ -990,6 +993,14 @@ static int at_client_para_init(at_client_t client)
         goto __exit;
     }
 
+    qosa_sem_create(&client->data_send_notice, 0);
+    if (client->data_send_notice == NULL)
+    {
+        LOG_E("AT client initialize failed! at_client_resp semaphore create failed!");
+        result = QOSA_ERROR_NO_MEMORY;
+        goto __exit;
+    }
+
     client->urc_table = NULL;
     client->urc_table_size = 0;
 
@@ -1018,6 +1029,11 @@ __exit:
         if (client->resp_notice)
         {
             qosa_sem_delete(client->resp_notice);
+        }
+
+        if (client->data_send_notice)
+        {
+            qosa_sem_delete(client->data_send_notice);
         }
 
         if (client->recv_line_buf)

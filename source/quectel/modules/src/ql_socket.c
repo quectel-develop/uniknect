@@ -345,7 +345,7 @@ static int ql_socket_send(ql_socket_t handle, const char *buf, size_t len, const
         struct sockaddr_in *sock_addr = (struct sockaddr_in *)to;
         char *ip = inet_ntoa(sock_addr->sin_addr);
         uint16_t port = ntohs(sock_addr->sin_port);
-        snprintf(cmd, sizeof(cmd), "AT+QISEND=%d,%%d,%s,%d", handle->fd, ip, port);
+        snprintf(cmd, sizeof(cmd), "AT+QISEND=%d,%%d,\"%s\",%d", handle->fd, ip, port);
     }
     else
     {

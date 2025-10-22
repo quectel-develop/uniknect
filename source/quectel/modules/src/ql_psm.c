@@ -6,6 +6,7 @@
 #include "ql_net.h"
 #include "ql_psm.h"
 #include "qosa_log.h"
+#include "module_info.h"
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN64)
 #include "windows.h"
@@ -216,8 +217,23 @@ int ql_psm_settings_read(at_client_t client, ql_psm_setting_s *settings)
 
 void ql_psm_pon_trig_ctrl(int value)
 {
-    HAL_GPIO_WritePin(GPIOB,GPIO_PIN_0, value);
-    LOG_I("set pon_trig value: %d", value);
+    if (get_module_type() == MOD_TYPE_BG770)
+    {
+        HAL_GPIO_WritePin(GPIOB,GPIO_PIN_0, value);
+        LOG_I("set pon_trig value: %d", value);
+    }
+    else
+    {
+        if (value != 0)
+            LOG_W("the module will automatically enter PSM mode once the set active time expires.");
+        else
+        {
+            HAL_GPIO_WritePin(GPIOB,GPIO_PIN_0, GPIO_PIN_RESET);
+            qosa_task_sleep_ms(100);
+            HAL_GPIO_WritePin(GPIOB,GPIO_PIN_0, GPIO_PIN_SET);
+            LOG_I("set pon_trig raising");
+        }
+    }
 }
 
 void ql_psm_wakeup()
