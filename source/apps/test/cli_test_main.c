@@ -97,8 +97,9 @@ void cli_test_main(void)
             switch (msgs.what)
             {
                 case QL_BROADCAST_NET_DATACALL_SUCCESS:
-                    LOG_I("Initialization done, do your own business.");
-                    debug_uart_input_notify();
+                    LOG_I("Initialization done, do your own business.\r\n");
+                    // debug_uart_input_notify();
+                    cli_test_table(0, NULL);
                     break;
 
                 case QL_BROADCAST_SD_CARD_DETECT:

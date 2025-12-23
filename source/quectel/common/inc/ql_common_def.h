@@ -37,6 +37,12 @@ typedef enum
     QL_HTTP_ERR_PUT_FILE,
     QL_HTTP_ERR_INPUT_BODY,
 
+    QL_HTTP_RESPONSE_OK   = 200,
+    QL_HTTP_ERR_FORBIDDEN = 403,
+    QL_HTTP_ERR_NOT_FOUND = 404,
+    QL_HTTP_ERR_CONFLICT  = 409,
+    QL_HTTP_ERR_LENGTH_REQUIRED = 411,
+    QL_HTTP_ERR_INTERNAL_SERVER = 500,
     
     QL_HTTP_ERR_UNKNOWN           = 701,  // Unknown/unclassified error
     QL_HTTP_ERR_TIMEOUT           = 702,  // Request timeout (server not responding)

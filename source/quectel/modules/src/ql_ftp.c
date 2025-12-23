@@ -2,10 +2,11 @@
 #ifdef __QUECTEL_UFP_FEATURE_SUPPORT_FTP_S__
 #include <stdarg.h>
 #include "qosa_log.h"
-#include "module_info.h"
+#include "ql_module_compat.h"
 #include "ql_ftp.h"
 
 static bool s_global_ftp_init = false;
+static const char* s_body_end_description = "\r\nOK\r\n";
 
 static const char* s_ql_ftp_option_strings[] =
 {
@@ -274,6 +275,7 @@ static void ql_ftp_upload_cb(const char *data, size_t len, void* arg)
     ql_ftp_t handle = (ql_ftp_t)arg;
     char buffer[1024] = {0};
     UINT br = 0;
+    size_t total_len = 0;
     at_client_self_recv(handle->client, buffer, 1024, 2000, 1, true);
     if (strstr(buffer, "CONNECT\r\n") != NULL)
     {
@@ -293,6 +295,9 @@ static void ql_ftp_upload_cb(const char *data, size_t len, void* arg)
             }
             if (br <= 0)
                 break;
+            total_len += br;
+            if (handle->usr_progress_cb != NULL)
+                handle->usr_progress_cb(total_len, handle->file_size, handle->user_progress_data);
             at_client_obj_send_nolock(handle->client, buffer, br, false); // Send data to the modem
         }
         qosa_task_sleep_ms(2000);
@@ -308,11 +313,11 @@ static void ql_ftp_upload_cb(const char *data, size_t len, void* arg)
     if (NULL == handle->usr_read_cb)
         f_close(&handle->file);
 }
-
 static void ql_ftp_download_cb(const char *data, size_t len, void* arg)
 {
     ql_ftp_t handle = (ql_ftp_t)arg;
     char buffer[1024] = {0};
+    char body_desc[16] = {0};
     UINT br = 0;
     at_client_self_recv(handle->client, buffer, 1024, 2000, 1, true);
     size_t total_len = 0;
@@ -324,16 +329,18 @@ static void ql_ftp_download_cb(const char *data, size_t len, void* arg)
         while (total_len < handle->file_size)
         {
             recv_len = ((handle->file_size - total_len) > 1024) ? 1024 : (handle->file_size - total_len);
-            recv_len = at_client_obj_recv(handle->client, buffer, recv_len, 10 * 1000 , false);
+            recv_len = at_client_obj_recv(handle->client, buffer, recv_len, 30 * 1000 , false);
             if (recv_len <= 0)
             {
                 LOG_E("download over ");
                 handle->err = QL_FTP_ERR_DOWNLOAD;
-                qosa_sem_release(handle->sem);
                 break;
             }
             total_len += recv_len;
-            LOG_I("total_len %d", total_len);
+            if (handle->usr_progress_cb != NULL)
+            {
+                handle->usr_progress_cb(total_len, handle->file_size, handle->user_progress_data);
+            }
             if (handle->usr_write_cb != NULL)
             {
                 handle->usr_write_cb(QL_FTP_USR_DOWNLOAD_DATA, buffer, recv_len, handle->user_write_data);
@@ -351,11 +358,25 @@ static void ql_ftp_download_cb(const char *data, size_t len, void* arg)
                         f_close(&handle->file);
                     }
                 }
-                LOG_I("write %d bytes", total_len);
+                // LOG_I("write %d bytes", total_len);
             }
         }
+        memset(body_desc, 0, strlen(body_desc));
+        at_client_obj_recv(handle->client, body_desc, strlen(s_body_end_description), 2 * RT_TICK_PER_SECOND, true);
+        if (memcmp(body_desc, s_body_end_description, strlen(s_body_end_description)) != 0)
+        {
+            LOG_W("GET OK FAILED %s", body_desc);
+            handle->err = QL_FTP_ERR_DOWNLOAD;
         if (handle->usr_write_cb != NULL)
+            {
+                handle->usr_write_cb(QL_FTP_USR_DOWNLOAD_END, NULL, -1, handle->user_write_data);
+            }
+            qosa_sem_release(handle->sem);
+        }
+        else if (handle->usr_write_cb != NULL)
+        {
             handle->usr_write_cb(QL_FTP_USR_DOWNLOAD_END, NULL, 0, handle->user_write_data);
+    }
     }
     else if (strstr(buffer, "ERROR") != NULL || strstr(buffer, "+CME ERROR") != NULL)
     {
@@ -550,7 +571,11 @@ static QL_FTP_ERR_CODE_E ql_ftp_exec_cmd(ql_ftp_t handle, at_response_t resp, QL
         return default_err;
     }
 
-    qosa_sem_wait(handle->sem, QOSA_WAIT_FOREVER);
+    while (qosa_sem_wait(handle->sem, (handle->timeout +1) * RT_TICK_PER_SECOND) != QOSA_OK)
+    {
+        if (handle->err != QL_FTP_OK)
+            break;
+    }
     at_delete_resp(resp);
     // qosa_mutex_unlock(handle->client->lock);
     return handle->err;
@@ -590,8 +615,10 @@ ql_ftp_t ql_ftp_init(const char* host, u16_t port, at_client_t client)
     handle->ssl.ssltype = 0;
     handle->usr_write_cb = NULL;
     handle->usr_read_cb = NULL;
+    handle->usr_progress_cb = NULL;
     handle->user_write_data = NULL;
     handle->user_read_data = NULL;
+    handle->user_progress_data = NULL;
     qosa_sem_create(&handle->sem, 0);
     if (!s_global_ftp_init)
     {
@@ -683,7 +710,7 @@ bool ql_ftp_setopt(ql_ftp_t handle, QL_FTP_OPTION_E option, ...)
         case QL_FTP_OPT_SSL_DATA_ADDR:
         {
             int value = va_arg(arg, int);
-            if (strstr(get_module_type_name(), "BG95") != NULL)
+            if (!ql_support_ftp_data_addr_type_2())
             {
                 if (value > 1 || value < 0)
                     break;
@@ -719,7 +746,11 @@ bool ql_ftp_setopt(ql_ftp_t handle, QL_FTP_OPTION_E option, ...)
             at_delete_resp(resp);
             va_end(arg);
             return true;
-
+        case QL_FTP_OPT_PROGRESS_FUNCTION:
+            handle->usr_progress_cb = va_arg(arg, ftp_user_progress_callback);
+            at_delete_resp(resp);
+            va_end(arg);
+            return true;
         case QL_FTP_OPT_WRITE_DATA:
             handle->user_write_data = va_arg(arg, void*);
             at_delete_resp(resp);
@@ -727,6 +758,11 @@ bool ql_ftp_setopt(ql_ftp_t handle, QL_FTP_OPTION_E option, ...)
             return true;
        case QL_FTP_OPT_READ_DATA:
             handle->user_read_data = va_arg(arg, void*);
+            at_delete_resp(resp);
+            va_end(arg);
+            return true;
+       case QL_FTP_OPT_PROGRESS_DATA:
+            handle->user_progress_data = va_arg(arg, void*);
             at_delete_resp(resp);
             va_end(arg);
             return true;
@@ -859,7 +895,7 @@ QL_FTP_ERR_CODE_E ql_ftp_list(ql_ftp_t handle, const char *path, ql_ftp_file_inf
 
 QL_FTP_ERR_CODE_E ql_ftp_nlist(ql_ftp_t handle, const char *path, ql_ftp_file_info_s **head)
 {
-    if (strstr(get_module_type_name(), "BG95") != NULL)
+    if (!ql_support_ftp_nlist())
     {
         return QL_FTP_ERR_NOT_SUPPORT;
     }
@@ -919,6 +955,9 @@ QL_FTP_ERR_CODE_E ql_ftp_upload(ql_ftp_t handle, const char *local_file_name, co
                 LOG_E("Failed to open file %s", local_file_name);
                 return QL_FTP_ERR_UPLOAD;
             }
+            FILINFO file_info;
+            f_stat(local_file_name, &file_info);
+            handle->file_size = file_info.fsize;
             local_name = "COM:";
             resp = at_create_resp_by_selffunc_new(128, 0, handle->timeout * 1000 * 2, ql_ftp_upload_cb, handle);
         }

@@ -83,6 +83,8 @@ int ql_setsockopt(int sockfd, int level, int optname, const void *optval, sockle
 
 int ql_getsockopt(int socket, int level, int optname, void *optval, socklen_t *optlen);
 
+int ql_getaddrinfo(at_client_t client, const char *node, const char *service, const struct addrinfo *hints, struct addrinfo **res);
+void ql_free_addrinfo(struct addrinfo *res);
 #define socket(domain, type, protocol)                      ql_socket(domain, type, protocol)
 #define close(socket)                                       ql_close(socket)
 #define shutdown(socket, how)                               ql_shutdown(socket, how)
@@ -97,6 +99,8 @@ int ql_getsockopt(int socket, int level, int optname, void *optval, socklen_t *o
 #define listen(socket, backlog)                             ql_listen(socket, backlog)
 #define accept(socket, name, namelen)                       ql_accept(socket, name, namelen)
 #define select(nfds, readfds, writefds, exceptfds, timeout) ql_select(nfds, readfds, writefds, exceptfds, timeout)
+#define getaddrinfo(client, node, service, hints, res)      ql_getaddrinfo(client, node, service, hints, res)    
+#define free_addrinfo(res)                                  ql_free_addrinfo(res)
 #ifdef __cplusplus
 }
 #endif

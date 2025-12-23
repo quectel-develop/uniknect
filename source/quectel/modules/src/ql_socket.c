@@ -5,7 +5,7 @@
 #include "ql_socket.h"
 
 #define SOCKET_MAX_FD 12
-#define ONE_PKT_MAX_LENGTH 1024
+#define ONE_PKT_MAX_LENGTH 1500
 static bool s_global_socket_init = false;
 static osa_mutex_t s_fd_lock = NULL; // never delete
 static osa_sem_t s_fd_sem = NULL;
@@ -17,6 +17,17 @@ typedef struct ql_socket_instance
 
 static ql_socket_instance_s s_socket_indices[SOCKET_MAX_FD] = {0};
 
+typedef struct ql_getaddrinfo_cache
+{
+    int ip_count;
+    int ip_total;
+    bool first_urc;
+    int port;
+    osa_sem_t sem;
+    struct addrinfo **res;
+} ql_getaddrinfo_cache_t;
+
+static ql_getaddrinfo_cache_t s_addrinfo_cache;
 /*
 * @brief find vaild fd, then bind fd to handle
 * if fd vaild,used fd, otherwise auto find a free fd
@@ -258,6 +269,87 @@ static void ql_socket_urc_incoming(struct at_client *client, const char *data, s
     }
 }
 
+
+static void ql_socket_urc_getip(struct at_client *client, const char *data, size_t size, void *arg)
+{   
+    int err = -1;
+    int ip_total = 0;
+    int ttl = 0;
+    if (s_addrinfo_cache.first_urc)
+    {
+        if (sscanf(data, "+QIURC: \"dnsgip\",%d,%d,%d", &err, &ip_total, &ttl) != 3)
+        {
+            LOG_E("sscanf failed");
+            qosa_sem_release(s_addrinfo_cache.sem);
+            return;
+        }
+        s_addrinfo_cache.ip_total = ip_total;
+        s_addrinfo_cache.first_urc = false;
+    }
+    else
+    {
+        char ip[16] = {0};
+        if (sscanf(data, "+QIURC: \"dnsgip\",\"%15[^\"]\"", ip) != 1)
+        {
+            qosa_sem_release(s_addrinfo_cache.sem);
+            return;
+        }
+
+        struct addrinfo *addr = (struct addrinfo *)malloc(sizeof(struct addrinfo));
+        if (addr == NULL) {
+            LOG_E("Memory allocation failed for addrinfo");
+            qosa_sem_release(s_addrinfo_cache.sem);
+            return;
+        }
+        memset(addr, 0, sizeof(struct addrinfo));
+
+        addr->ai_family = AF_INET;
+        addr->ai_socktype = SOCK_STREAM;
+        addr->ai_protocol = IPPROTO_TCP;
+
+        struct sockaddr_in *sockaddr_in = (struct sockaddr_in *)malloc(sizeof(struct sockaddr_in));
+        if (sockaddr_in == NULL) {
+            LOG_E("Memory allocation failed for sockaddr_in");
+            free(addr);
+            qosa_sem_release(s_addrinfo_cache.sem);
+            return;
+        }
+        memset(sockaddr_in, 0, sizeof(struct sockaddr_in));
+
+        if (inet_aton(ip, &(sockaddr_in->sin_addr)) <= 0)
+        {
+            LOG_E("inet_pton failed for IP address %s", ip);
+            free(sockaddr_in);
+            free(addr);
+            qosa_sem_release(s_addrinfo_cache.sem);
+            return;
+        }
+
+        sockaddr_in->sin_family = AF_INET;
+        sockaddr_in->sin_port = htons(s_addrinfo_cache.port);
+
+        addr->ai_addr = (struct sockaddr *)sockaddr_in;
+        addr->ai_addrlen = sizeof(struct sockaddr_in);
+
+        if (*s_addrinfo_cache.res == NULL) {
+            *s_addrinfo_cache.res = addr;
+        } else {
+            struct addrinfo *last = *s_addrinfo_cache.res;
+            while (last->ai_next != NULL) {
+                last = last->ai_next;
+            }
+            last->ai_next = addr;
+        }
+    
+        s_addrinfo_cache.ip_count++;
+        if (s_addrinfo_cache.ip_count == s_addrinfo_cache.ip_total)
+        {
+            qosa_sem_release(s_addrinfo_cache.sem);
+        }
+    }
+
+}
+
 static void ql_socket_urc_default(struct at_client *client, const char *data, size_t size, void *arg)
 {
     LOG_I("URC data : %s", data);
@@ -284,6 +376,7 @@ static void ql_socket_urc_qiurc(struct at_client *client, const char *data, size
         case 'c' : ql_socket_urc_close(client, data, size, arg);    break;//+QIURC: "closed"
         case 'r' : ql_socket_urc_recv(client, data, size, arg);     break;//+QIURC: "recv"
         case 'i' : ql_socket_urc_incoming(client, data, size, arg); break;//+QIURC: "incoming"
+        case 'd' : ql_socket_urc_getip(client, data, size, arg);    break;//+QIURC: "dnsgip"
         default  : ql_socket_urc_default(client, data, size, arg);  break;
     }
 }
@@ -391,6 +484,7 @@ int ql_close(int sockfd)
         at_obj_exec_cmd(handle->client, resp, "AT+QICLOSE=%d,1", sockfd);
         at_delete_resp(resp);
     } 
+    qosa_task_sleep_ms(1000);
     ql_socket_release_fd(handle->fd);
     ql_socket_pkt_delete_all(handle);
     qosa_sem_delete(handle->sem);
@@ -703,5 +797,55 @@ int ql_setsockopt(int sockfd, int level, int optname, const void *optval, sockle
 int ql_getsockopt(int socket, int level, int optname, void *optval, socklen_t *optlen)
 {
     return 0;
+}
+
+int ql_getaddrinfo(at_client_t client, const char *node, const char *service, const struct addrinfo *hints, struct addrinfo **res)
+{
+    if (NULL == node || NULL == res)
+    {
+        LOG_E("node or res is NULL.");
+        return -1;
+    }
+    if (!s_global_socket_init)
+    {
+        qosa_mutex_create(&s_fd_lock);
+        qosa_sem_create(&s_fd_sem, 0);
+        at_set_urc_table(s_socket_urc_table, sizeof(s_socket_urc_table) / sizeof(s_socket_urc_table[0]));
+        s_global_socket_init = true;
+    }
+    *res = NULL;
+    osa_sem_t sem;
+    qosa_sem_create(&sem, 0);
+    s_addrinfo_cache.res = res;
+    s_addrinfo_cache.sem = sem;
+    s_addrinfo_cache.first_urc = true;
+    s_addrinfo_cache.ip_count = 0;
+    s_addrinfo_cache.ip_total = 0;
+    s_addrinfo_cache.port = service == NULL ? 0 : atoi(service);
+    at_response_t resp = at_create_resp_new(128, 0, (5000), NULL);
+
+    if (at_obj_exec_cmd(client, resp, "AT+QIDNSGIP=1,\"%s\"", node) < 0)
+    {
+        at_delete_resp(resp);
+        LOG_E("get addr failed");
+        return -1;
+    }
+    at_delete_resp(resp);
+    qosa_sem_wait(sem, QOSA_WAIT_FOREVER);
+    qosa_sem_delete(sem);
+    return 0;
+}
+
+void ql_free_addrinfo(struct addrinfo *res)
+{
+    struct addrinfo *current = res;
+    while (current != NULL) {
+        struct addrinfo *next = current->ai_next;
+        if (current->ai_addr) {
+            free(current->ai_addr);
+        }
+        free(current);
+        current = next;
+    }
 }
 #endif /* __QUECTEL_UFP_FEATURE_SUPPORT_SOCKET__ */

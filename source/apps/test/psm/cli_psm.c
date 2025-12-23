@@ -71,11 +71,11 @@ int cli_psm_test(s32_t argc, char *argv[])
     }
     else if (strcmp((const char *)argv[1], "pon_trig") == 0)
     {
-        ql_psm_pon_trig_ctrl(atoi(argv[2]));
+        ql_psm_pon_trig_ctrl(at_client_get_first(), atoi(argv[2]));
     }
     else if (strcmp((const char *)argv[1], "powerkey") == 0)
     {
-        ql_psm_wakeup();
+        ql_psm_wakeup(at_client_get_first());
     }
     else
     {

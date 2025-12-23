@@ -396,7 +396,7 @@ int at_obj_exec_cmd(at_client_t client, at_response_t resp, const char *cmd_expr
     client->last_cmd_len = at_vprintfln(client->send_buf, client->send_bufsz, cmd_expr, args);
     if (client->last_cmd_len > 2)
     {
-        client->last_cmd_len -= 2; /* "\r\n" */
+        client->last_cmd_len -= 1; /* "\r" */
     }
     va_end(args);
 
@@ -404,7 +404,7 @@ int at_obj_exec_cmd(at_client_t client, at_response_t resp, const char *cmd_expr
     {
         if (qosa_sem_wait(client->resp_notice, resp->timeout) != QOSA_OK)
         {
-            LOG_W("execute command (%.*s) timeout (%d ticks)!", client->last_cmd_len, client->send_buf, resp->timeout);
+            LOG_W("execute command (%.*s) timeout (%d ms)!", client->last_cmd_len, client->send_buf, resp->timeout);
             client->resp_status = AT_RESP_TIMEOUT;
             result = QOSA_ERROR_TIMEOUT;
             goto __exit;
@@ -443,7 +443,7 @@ int at_obj_exec_cmd_with_data(at_client_t client, const char *cmd, const char *d
         if (at_obj_exec_cmd(client, resp, cmd_exc) < 0)
             break;
 
-        need_len = at_client_obj_send(client, data + sent_len, need_len, true);
+        need_len = at_client_obj_send(client, data + sent_len, need_len, need_len >= 256 ? false : true);
         qosa_sem_wait(client->data_send_notice, 1000);
         at_delete_resp(resp);
         qosa_task_sleep_ms(10);
@@ -508,8 +508,8 @@ size_t at_client_obj_send_nolock(at_client_t client, const char *buf, size_t siz
 #ifdef AT_PRINT_RAW_CMD
     if (print)
         at_print_raw_cmd("sendline", buf, size);
-    else
-        LOG_I("sendline %d bytes data", size);
+    // else
+    //     LOG_I("sendline %d bytes data", size);
 #endif
     len = at_utils_send(0, buf, size);
     return len;
@@ -583,8 +583,8 @@ size_t at_client_obj_recv(at_client_t client, char *buf, size_t size, int32_t ti
 #ifdef AT_PRINT_RAW_CMD
     if (print)
         at_print_raw_cmd("urc_recv", buf, len);
-    else
-        LOG_I("urc_recv %d bytes data", len);
+    // else
+    //     LOG_I("urc_recv %d bytes data", len);
 #endif
 
     return len;
@@ -852,8 +852,12 @@ static void client_parser(void *argv)
                 /* current receive is request, try to execute related operations */
                 if (client->urc->func != NULL)
                 {
-                    // if (strstr(client->recv_line_buf, AT_RESP_END_ERROR) != NULL)
+                    if (strstr(client->recv_line_buf, "QHTTPGET") != NULL
+                        || strstr(client->recv_line_buf, "QHTTPPOST") != NULL
+                        || strstr(client->recv_line_buf, "QHTTPPUT") != NULL)
+                    {
                     qosa_sem_release(client->resp_notice);
+                    }
                     client->urc->func(client, client->recv_line_buf, client->recv_line_len, client->arg);
                 }
                 client->urc = NULL;

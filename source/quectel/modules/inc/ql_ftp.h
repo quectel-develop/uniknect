@@ -70,6 +70,8 @@ typedef enum
     QL_FTP_OPT_WRITE_DATA,          // void*, user-defined context passed to the write callback
     QL_FTP_OPT_READ_FUNCTION,       // Callback for providing data to be UPLOADED to FTP server  
     QL_FTP_OPT_READ_DATA,           // void*, user-defined context passed to the read callback
+    QL_FTP_OPT_PROGRESS_FUNCTION,   // Callback function for tracking upload/download progress  
+    QL_FTP_OPT_PROGRESS_DATA,       // void*, user-defined context passed to the progress callback
     QL_FTP_OPT_UNKNOWN
 } QL_FTP_OPTION_E;
 
@@ -83,6 +85,7 @@ typedef enum
 
 typedef void (*ftp_user_write_callback)(QL_FTP_USR_DOWNLOAD_EVENT_E, const char *, size_t, void *);
 typedef size_t (*ftp_user_read_callback)(char *, size_t, void *);
+typedef void (*ftp_user_progress_callback)(int, int, void *);
 
 typedef struct ql_ftp_file_info
 {
@@ -113,8 +116,10 @@ typedef struct ql_ftp
     size_t file_size;
     ftp_user_write_callback usr_write_cb;
     ftp_user_read_callback  usr_read_cb;
+    ftp_user_progress_callback usr_progress_cb;
     void* user_write_data;
     void* user_read_data;
+    void* user_progress_data;
     ql_ftp_file_info_s *file_list;
     ql_SSL_Config ssl;
 } ql_ftp_s;

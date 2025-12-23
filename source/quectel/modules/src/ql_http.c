@@ -2,7 +2,7 @@
 #ifdef __QUECTEL_UFP_FEATURE_SUPPORT_HTTP_S__
 #include <stdarg.h>
 #include "qosa_log.h"
-#include "module_info.h"
+#include "ql_module_compat.h"
 #include "ql_http.h"
 
 /**
@@ -178,6 +178,7 @@ static void ql_http_cb(const char *data, size_t len, void* arg)
         {
             memset(body_data, 0, HTTP_POST_MAX_LEN);
             read_len = at_client_self_recv(handle->client, body_data, HTTP_POST_MAX_LEN, (handle->timeout - 1) * RT_TICK_PER_SECOND, 1, false);
+            if (handle->usr_write_cb != NULL)
             handle->usr_write_cb(QL_HTTP_USR_EVENT_HEADER_DATA, body_data, read_len, handle->user_write_data);
             if (strcmp(body_data, "\r\n") == 0)
             {
@@ -211,16 +212,16 @@ static void ql_http_cb(const char *data, size_t len, void* arg)
     if (memcmp(body_desc, s_body_end_description, strlen(s_body_end_description)) != 0)
     {
         LOG_W("GET OK FAILED %s", body_desc);
+        if (handle->usr_write_cb != NULL)
+        {
+            handle->usr_write_cb(QL_HTTP_USR_EVENT_END, NULL, -1, handle->user_write_data);
+        }
         qosa_sem_release(handle->sem);
     }
-    if (handle->usr_write_cb != NULL)
+    else if (handle->usr_write_cb != NULL)
     {
         handle->usr_write_cb(QL_HTTP_USR_EVENT_END, NULL, 0, handle->user_write_data);
     }
-    // else
-    // {
-    //     qosa_sem_release(handle->sem);
-    // }
 }
 
 static QL_HTTP_ERR_CODE_E ql_http_set_url(ql_http_t handle, at_response_t resp, const char *url)
@@ -297,7 +298,7 @@ static QL_HTTP_ERR_CODE_E ql_http_post(ql_http_t handle, at_response_t resp, con
 {
     if (data_len <= 0)
         return QL_HTTP_ERR_PARAM_INVALID;
-    at_resp_set_info_new(resp, 128, 2, handle->timeout * RT_TICK_PER_SECOND * 2, handle);
+    at_resp_set_info_new(resp, 128, 2, (handle->timeout+1) * RT_TICK_PER_SECOND, handle);
     if (at_obj_exec_cmd(handle->client, resp, "AT+QHTTPPOST=%d,%d,%d", data_len, handle->timeout, handle->timeout) < 0)
     {
         return QL_HTTP_ERR_POST;
@@ -584,7 +585,7 @@ QL_HTTP_ERR_CODE_E ql_http_request(ql_http_t handle, const char* url, QL_HTTP_ME
         at_delete_resp(resp);
         return err;
     }
-    at_resp_set_info_new(resp, 128, 4, handle->timeout * RT_TICK_PER_SECOND * 2, handle);
+    at_resp_set_info_new(resp, 128, 0, (handle->timeout+1) * RT_TICK_PER_SECOND, handle);
     qosa_mutex_lock(handle->client->lock, QOSA_WAIT_FOREVER);
     switch (method)
     {
@@ -615,10 +616,10 @@ QL_HTTP_ERR_CODE_E ql_http_request(ql_http_t handle, const char* url, QL_HTTP_ME
     }
     qosa_sem_wait(handle->sem, (handle->timeout+1) * RT_TICK_PER_SECOND);
     at_delete_resp(resp);
-    if (handle->err_code != QL_HTTP_OK)
+    if (handle->err_code != QL_HTTP_OK || handle->rsp_code != QL_HTTP_RESPONSE_OK)
     {
         qosa_mutex_unlock(handle->client->lock);
-        return handle->err_code;
+        return handle->err_code == 0 ? handle->rsp_code : handle->err_code;
     }
     if (NULL == handle->usr_write_cb)
         handle->data = (char*)malloc(handle->content_length);
@@ -650,8 +651,7 @@ void ql_http_deinit(ql_http_t handle)
 {
     if(NULL == handle)
         return;
-    if (strstr(get_module_type_name(), "BG95") == NULL && strstr(get_module_type_name(), "BG96") == NULL
-        && strstr(get_module_type_name(), "BG770") == NULL)
+    if (ql_use_http_stop())
     {
         at_response_t resp = at_create_resp_new(128, 2, handle->timeout * RT_TICK_PER_SECOND, handle);
         at_obj_exec_cmd(handle->client, resp, "AT+QHTTPSTOP", handle->timeout);

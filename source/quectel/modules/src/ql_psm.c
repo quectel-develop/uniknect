@@ -3,10 +3,10 @@
 #include <at.h>
 #include "main.h"
 #include "hal_common.h"
+#include "qosa_log.h"
+#include "ql_module_compat.h"
 #include "ql_net.h"
 #include "ql_psm.h"
-#include "qosa_log.h"
-#include "module_info.h"
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN64)
 #include "windows.h"
@@ -167,6 +167,18 @@ uint32_t convert_Active_binary_to_seconds(const char *binary_str)
     }
 }
 
+static void set_cfun_mode(at_client_t client, int mode)
+{
+    if(mode < 0 || mode > 4)
+    {
+        LOG_W("Invalid CFUN mode!\n");
+        return;
+    }
+    at_response_t resp = at_create_resp_new(256, 0, (15000), NULL);
+    at_obj_exec_cmd(client, resp, "AT+CFUN=%d", mode);
+    at_delete_resp(resp);
+    LOG_I("Set CFUN mode %d", mode);
+}
 int ql_psm_settings_write(at_client_t client, ql_psm_setting_s settings)
 {
 	if (settings.Requested_Periodic_TAU < 0|| settings.Requested_Active_Time < 0 )
@@ -181,7 +193,40 @@ int ql_psm_settings_write(at_client_t client, ql_psm_setting_s settings)
 	value = ql_convert_seconds_to_Active_format(settings.Requested_Active_Time);
 	ql_convert_byte_to_binary_str(value, Active);
 	at_response_t resp = at_create_resp_new(256, 0, (5000), NULL);
-	int ret = at_obj_exec_cmd(client, resp, "AT+CPSMS=%d,,,\"%s\",\"%s\"", settings.Mode, TAU, Active);
+    int ret = -1;
+    if (ql_need_ctrl_dtr())
+    {
+        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_5, GPIO_PIN_SET);
+        qosa_task_sleep_ms(500);
+        LOG_I("set dtr high");
+    }
+    else if (ql_need_ctrl_ims())
+    {
+        at_response_t ims_resp = at_create_resp_new(256, 0, (5000), NULL);
+        int ret = at_obj_exec_cmd(client, ims_resp, "AT+QCFG=\"ims\",%d", settings.Mode ? 2 : 1);
+        at_delete_resp(ims_resp);
+        if (ret != 0)
+        {
+            LOG_E("Failed to set IMS mode.");
+            return -1;
+        }
+    }
+    if (!ql_use_cpsms_for_psm())
+    {
+        if (settings.Mode)
+        {
+            set_cfun_mode(client, 4);
+            qosa_task_sleep_ms(1000);
+            ret = at_obj_exec_cmd(client, resp, "AT+QSCLK=3,1,\"%s\",\"%s\"", TAU, Active);
+            set_cfun_mode(client, 1);
+        }
+        else
+            ret = at_obj_exec_cmd(client, resp, "AT+QSCLK=0");
+    }
+    else
+    {
+	    ret = at_obj_exec_cmd(client, resp, "AT+CPSMS=%d,,,\"%s\",\"%s\"", settings.Mode, TAU, Active);
+    }
 	at_delete_resp(resp);
 	return (ret == 0) ? 0 : -1;
 }
@@ -189,7 +234,10 @@ int ql_psm_settings_write(at_client_t client, ql_psm_setting_s settings)
 int ql_psm_settings_read(at_client_t client, ql_psm_setting_s *settings)
 {
 	at_response_t resp = at_create_resp_new(256, 0, (3000), NULL);
-	if (at_obj_exec_cmd(client, resp, "AT+CPSMS?") < 0)
+    int ret = -1;
+    if (!ql_use_cpsms_for_psm())
+    {
+        if (at_obj_exec_cmd(client, resp, "AT+QSCLK?") < 0)
 	{
 		at_delete_resp(resp);
 		return -1;
@@ -201,47 +249,143 @@ int ql_psm_settings_read(at_client_t client, ql_psm_setting_s *settings)
 		char TAU[9] = {0};
 		char Active[9] = {0};
 		LOG_I("%s", line);
-        if (sscanf(line, "+CPSMS: %d,,,\"%[^\"]\",\"%[^\"]\"",&tmp, TAU, Active) == 3 || 
-            sscanf(line, "+CPSMS: %d,%*[^,],%*[^,],\"%[^\"]\",\"%[^\"]\"",&tmp, TAU, Active) == 3)
+            if (sscanf(line, "+QSCLK: %d",&tmp) != 1)
+            {
+                continue;
+            }
+            settings->Mode = (bool)tmp;
+            if (!settings->Mode)
+            {
+                settings->Requested_Periodic_TAU = 0;
+                settings->Requested_Active_Time = 0;
+                at_delete_resp(resp);
+                return 0;
+            }
+            if (sscanf(line, "+QSCLK: %d,%*d,\"%[^\"]\",\"%[^\"]\"",&tmp, TAU, Active) == 3)
 		{
 			settings->Mode = (bool)tmp;
 			settings->Requested_Periodic_TAU = convert_TAU_binary_to_seconds(TAU);
 			settings->Requested_Active_Time = convert_Active_binary_to_seconds(Active);
+                LOG_I("PSM settings: %d, %d, %d", settings->Mode, settings->Requested_Periodic_TAU, settings->Requested_Active_Time);
+                ret = 0;
+                break;
+            }
+        }
+
+        at_resp_set_info_new(resp, 256, 0, 3000, NULL);
+        if (at_obj_exec_cmd(client, resp, "AT+QNWCFG=\"psm/timer\"") < 0)
+        {
+            at_delete_resp(resp);
+            return ret;
+        }
+        for (int i = 0; i < resp->line_counts; i++)
+        {
+            const char *line = at_resp_get_line(resp, i + 1);
+            int TAU = 0;
+            int Active = 0;
+            LOG_I("%s", line);
+            if (sscanf(line, "+QNWCFG: \"psm/timer\",%d,%*d,%d",&TAU, &Active) == 2)
+            {
+                settings->Requested_Periodic_TAU = TAU / 1000;
+                settings->Requested_Active_Time = Active / 1000;
 			at_delete_resp(resp);
 			return 0;
 		}
 	}
-	at_delete_resp(resp);
-	return -1;
-}
-
-void ql_psm_pon_trig_ctrl(int value)
-{
-    if (get_module_type() == MOD_TYPE_BG770)
-    {
-        HAL_GPIO_WritePin(GPIOB,GPIO_PIN_0, value);
-        LOG_I("set pon_trig value: %d", value);
     }
     else
     {
-        if (value != 0)
-            LOG_W("the module will automatically enter PSM mode once the set active time expires.");
-        else
+        if (at_obj_exec_cmd(client, resp, "AT+CPSMS?") < 0)
         {
-            HAL_GPIO_WritePin(GPIOB,GPIO_PIN_0, GPIO_PIN_RESET);
-            qosa_task_sleep_ms(100);
-            HAL_GPIO_WritePin(GPIOB,GPIO_PIN_0, GPIO_PIN_SET);
-            LOG_I("set pon_trig raising");
+	at_delete_resp(resp);
+	return -1;
         }
+        for (int i = 0; i < resp->line_counts; i++)
+        {
+            const char *line = at_resp_get_line(resp, i + 1);
+            int tmp = 0;
+            char TAU[9] = {0};
+            char Active[9] = {0};
+            LOG_I("%s", line);
+            if (sscanf(line, "+CPSMS: %d,,,\"%[^\"]\",\"%[^\"]\"",&tmp, TAU, Active) == 3 || 
+                sscanf(line, "+CPSMS: %d,%*[^,],%*[^,],\"%[^\"]\",\"%[^\"]\"",&tmp, TAU, Active) == 3)
+            {
+                settings->Mode = (bool)tmp;
+                settings->Requested_Periodic_TAU = settings->Mode ? convert_TAU_binary_to_seconds(TAU) : 0;
+                settings->Requested_Active_Time =  settings->Mode ? convert_Active_binary_to_seconds(Active) : 0;
+                ret = 0;
+                break;
+            }
+        }
+
+        // if (at_obj_exec_cmd(client, resp, "AT+QPSMS?") < 0)
+        // {
+        //     at_delete_resp(resp);
+        //     return ret;
+        // }
+        // for (int i = 0; i < resp->line_counts; i++)
+        // {
+        //     const char *line = at_resp_get_line(resp, i + 1);
+        //     int tmp = 0;
+        //     LOG_I("%s", line);
+        //     if (sscanf(line, "+QPSMS: %d,,,\"%d\",\"%d\"", &tmp, &settings->Requested_Periodic_TAU, &settings->Requested_Active_Time) == 3 || 
+        //         sscanf(line, "+QPSMS: %d,%*[^,],%*[^,],\"%d\",\"%d\"", &tmp, &settings->Requested_Periodic_TAU, &settings->Requested_Active_Time) == 3)
+        //     {
+        //         at_delete_resp(resp);
+        //         return 0;
+        //     }
+        // }
+    }
+
+	at_delete_resp(resp);
+	return ret;
+}
+
+static void ql_test_ping(at_client_t client)
+{
+    LOG_I("when wakeup, testing ping...");
+    at_response_t resp = at_create_resp_new(512, 0, (5000), NULL);
+
+    at_obj_exec_cmd(client, resp, "AT+QPING=1,\"8.8.8.8\"");
+    at_delete_resp(resp);
+}
+void ql_psm_pon_trig_ctrl(at_client_t client, int value)
+{
+    if (ql_support_pon_trig())
+    {
+        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, value);
+        LOG_I("set pon_trig value: %d", value);
+        qosa_task_sleep_ms(800);
+        if (0 == value)
+            ql_test_ping(client);
+    }
+    else
+    {
+        LOG_W("the module will automatically enter PSM mode once the set active time expires and exit PSM by powerkey");
     }
 }
 
-void ql_psm_wakeup()
+void ql_psm_wakeup(at_client_t client)
 {
-    HAL_GPIO_WritePin(UFP_PWRKEY_PORT,UFP_PWRKEY_PIN, GPIO_PIN_SET);
+    if (ql_need_ctrl_dtr())
+    {
+        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_5, GPIO_PIN_RESET);
+        LOG_I("set dtr low to wakeup modem");
     qosa_task_sleep_ms(500);
+        at_response_t resp = at_create_resp_new(256, 0, (5000), NULL);
+        at_obj_exec_cmd(client, resp, "AT+QSCLK=0");
+        at_delete_resp(resp);
+        qosa_task_sleep_ms(800);
+        ql_test_ping(client);
+        return;
+    }
+
+    HAL_GPIO_WritePin(UFP_PWRKEY_PORT, UFP_PWRKEY_PIN, GPIO_PIN_SET);
+    qosa_task_sleep_ms(ql_use_cpsms_for_psm() ? 2000 : 3000);
     HAL_GPIO_WritePin(UFP_PWRKEY_PORT,UFP_PWRKEY_PIN, GPIO_PIN_RESET);
     LOG_I("wakeup modem");
+    qosa_task_sleep_ms(ql_use_cpsms_for_psm() ? 3000 : 800);
+    ql_test_ping(client);
 
 }
 #endif /* __QUECTEL_UFP_FEATURE_SUPPORT_PSM__ */

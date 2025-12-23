@@ -80,7 +80,7 @@ size_t at_vprintfln(char *send_buf, size_t buf_size, const char *format, va_list
     }
 
     send_buf[len++] = '\r';
-    send_buf[len++] = '\n';
+    // send_buf[len++] = '\n';
 
 #ifdef AT_PRINT_RAW_CMD
     at_print_raw_cmd("sendline", send_buf, len);

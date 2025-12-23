@@ -134,8 +134,8 @@ void qosa_uart_get_debug_input(const uint8_t **pData, uint16_t *pSize)
 
 void debug_uart_hardware_init(void)
 {
-    __HAL_UART_ENABLE_IT(&DEBUG_UART_HANDLE, UART_IT_IDLE); // Enable IDLE interrupt
     HAL_UART_Receive_IT(&DEBUG_UART_HANDLE, (uint8_t *)g_debug_uart_buf, sizeof(g_debug_uart_buf)/sizeof(g_debug_uart_buf[0])); // Interrupt reception
+    __HAL_UART_ENABLE_IT(&DEBUG_UART_HANDLE, UART_IT_IDLE); // Enable IDLE interrupt
 }
 
 
@@ -367,8 +367,8 @@ void at_uart_hardware_init(void)
 {
     if(g_uart_rb.buffer == NULL)
         ringbuffer_init(&g_uart_rb, g_uart_rb_buf, RINGBUFFER_SIZE);
-    __HAL_UART_ENABLE_IT(&AT_UART_HANDLE, UART_IT_IDLE); // Enable IDLE interrupt
     HAL_UART_Receive_DMA(&AT_UART_HANDLE, (uint8_t *)g_uart_buf, sizeof(g_uart_buf)/sizeof(g_uart_buf[0])); // DMA reception
+    __HAL_UART_ENABLE_IT(&AT_UART_HANDLE, UART_IT_IDLE); // Enable IDLE interrupt
 }
 
 int qosa_uart_open(void)

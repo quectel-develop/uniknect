@@ -2,7 +2,7 @@
 #ifdef __QUECTEL_UFP_FEATURE_SUPPORT_MQTT_S__
 #include <stdarg.h>
 #include "qosa_log.h"
-#include "module_info.h"
+#include "ql_module_compat.h"
 #include "ql_mqtt.h"
 
 #define MQTT_MAX_CLIENT_IDX 6
@@ -465,7 +465,7 @@ void ql_mqtt_disconnect(ql_mqtt_t handle)
     handle->status = QL_MQTT_STATUS_DISCONNECTING;
     at_obj_exec_cmd(handle->client, resp, "AT+QMTDISC=%d", handle->client_idx);
     qosa_sem_wait(handle->sem, 31 * 1000);// wait disconnect
-    if (strstr(get_module_type_name(), "BG770") == NULL)
+    if (ql_use_mqtt_close())
     {
         if (handle->status == QL_MQTT_STATUS_DISCONNECTED)
         {
@@ -496,9 +496,7 @@ QL_MQTT_ERR_CODE_E ql_mqtt_pub(ql_mqtt_t handle, const char *topic, const char *
     at_response_t resp = at_create_resp_new(128, 0, 3000, handle);
     const char *cmd = NULL;
     uint16_t mid = 0;
-    if (strstr(get_module_type_name(), "BG95") != NULL ||
-        strstr(get_module_type_name(), "BG96") != NULL ||
-        strstr(get_module_type_name(), "BG770") != NULL)
+    if (ql_use_mqtt_pubex())
     {
         cmd = "AT+QMTPUBEX";
     }

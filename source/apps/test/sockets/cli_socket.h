@@ -19,6 +19,7 @@ typedef struct {
     unsigned int loop_count;
     unsigned int loop_interval;  //In milliseconds
     char sin_addr[32];
+    char file_name[64];
     void *user_data;
 }socket_test_config;
 

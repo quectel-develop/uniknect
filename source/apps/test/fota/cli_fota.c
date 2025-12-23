@@ -66,14 +66,14 @@ static void ota_progress_callback(QL_FOTA_STATUS_E status, int progress, void *u
     switch (status)
     {
         case QL_FOTA_INPROGRESS:
-            LOG_I("FOTA progress: %d", progress);
+            LOG_I("FOTA download: %d", progress);
             break;
         case QL_FOTA_SUCCEED:
-            LOG_I("FOTA succeed");
+            LOG_I("FOTA download successfully");
             cli_reboot(0, NULL);
             break;
         case QL_FOTA_FAIL:
-            LOG_I("FOTA failed");
+            LOG_I("FOTA download failed");
             break;
         case QL_FOTA_SETFLAG:
             LOG_I("FOTA set flag");

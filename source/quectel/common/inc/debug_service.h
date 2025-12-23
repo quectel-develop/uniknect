@@ -29,11 +29,8 @@ int debug_cli_func_reg(int32_t cnt, Cli_Menu_t cli_menu[]);
 int debug_cli_service_create(void);
 int debug_cli_service_destroy(void);
 
-void inc_prompt_wait_count();
-void dec_prompt_wait_count();
-void log_shell_prompt(void);
-
 void debug_uart_input_notify(void);
 
+int cli_test_table(int argc, char *argv[]);
 #endif /* __DEBUG_SERVICE_H__ */
 

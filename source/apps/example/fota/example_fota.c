@@ -1,6 +1,7 @@
 #include "QuectelConfig.h"
 #ifndef __QUECTEL_UFP_FEATURE_SUPPORT_CLI_TEST__
 #include "qosa_log.h"
+#include "ql_dev.h"
 #include "ql_fota.h"
 
 static void ota_progress_callback(QL_FOTA_STATUS_E status, int progress, void *userData)
@@ -12,6 +13,7 @@ static void ota_progress_callback(QL_FOTA_STATUS_E status, int progress, void *u
             break;
         case QL_FOTA_SUCCEED:
             LOG_I("FOTA succeed");
+            cli_reboot(0, NULL);
             break;
         case QL_FOTA_FAIL:
             LOG_E("FOTA failed");
@@ -29,9 +31,9 @@ void example_fota_http(void)
     memset(&config, 0, sizeof(config));
     config.http_config.async = false;
     config.http_config.content_id = 1;
-    strcpy(config.http_config.url, "http://112.31.84.164:8300/Mandy/Quectel_UFP_STM32F413RGT6_A02.elf");
+    strcpy(config.http_config.url, "http://112.31.84.164:8300/Wells/Quectel_UFP_STM32F413RGT6_20251022.bin");
     config.http_config.location = QL_FOTA_DOWNLOAD_SD_CARD;
-    strcpy(config.http_config.save_path, "Quectel_UFP_STM32F413RGT6_A02.elf");
+    strcpy(config.http_config.save_path, "FotaFile.bin");
     config.http_config.cb = ota_progress_callback;
     config.http_config.user_data = NULL;
 
@@ -59,9 +61,9 @@ void example_fota_ftp(void)
     strcpy(config.ftp_config.username, "test");
     strcpy(config.ftp_config.password, "test");
     strcpy(config.ftp_config.work_dir, "/FTP-TEST");
-    strcpy(config.ftp_config.file_name, "Quectel_UFP_STM32F413RGT6_A02.elf");
+    strcpy(config.ftp_config.file_name, "Quectel_UFP_STM32F413RGT6_20251022.bin");
     config.ftp_config.location = QL_FOTA_DOWNLOAD_SD_CARD;
-    strcpy(config.ftp_config.save_path, "Quectel_UFP_STM32F413RGT6_A03.elf");
+    strcpy(config.ftp_config.save_path, "FotaFile.bin");
     config.ftp_config.cb = ota_progress_callback;
     config.ftp_config.user_data = NULL;
 

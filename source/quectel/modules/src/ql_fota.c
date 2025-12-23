@@ -13,6 +13,7 @@ typedef struct ql_fota_http_config_in
     void *file;
     int received;
     int total;
+    bool succeed;
     QL_FOTA_DOWNLOAD_LOCATION_E location;
 } ql_fota_config_in_s;
 static void ql_http_rsp_callback(QL_HTTP_USR_EVENT_E event, const char *data, size_t len, void *arg)
@@ -45,24 +46,26 @@ static void ql_http_rsp_callback(QL_HTTP_USR_EVENT_E event, const char *data, si
         }
         break;
     case QL_HTTP_USR_EVENT_END:
-        if (config->cb != NULL)
-            config->cb(config->received == config->total ? QL_FOTA_SUCCEED : QL_FOTA_FAIL,  0, config->user_data);
         switch (config->location)
         {
         case QL_FOTA_DOWNLOAD_SD_CARD:
             f_close((FIL*)config->file);
             free(config->file);
             config->file = NULL;
+            if (len == -1)
+            {
+                config->received = 0;
+            }
             break;
         case QL_FOTA_DOWNLOAD_FLASH:
             break;
         default:
             break;
         }
-        break;
-        
+        config->succeed = config->received == config->total ? true : false;
         if (config->cb != NULL)
             config->cb(config->received == config->total ? QL_FOTA_SUCCEED : QL_FOTA_FAIL,  0, config->user_data);
+        break;
     default:
         break;
     }
@@ -112,7 +115,7 @@ static void ql_http_rsp_callback(QL_HTTP_USR_EVENT_E event, const char *data, si
         }
         if (config->cb != NULL)
             config->cb(config->received == config->total ? QL_FOTA_SUCCEED : QL_FOTA_FAIL,  0, config->user_data);
- 
+        break;
     default:
         break;
     }
@@ -159,7 +162,8 @@ static int ql_fota_http_process(ql_fota_http_config_s *config)
     if (config->ssl_cfg.sslenble)
         ql_http_set_ssl(http_handle, config->ssl_cfg);
     QL_HTTP_ERR_CODE_E err = ql_http_request(http_handle, config->url, QL_HTTP_METHORD_GET, NULL, 0);
-    LOG_D("ql_http_request %d %p", err, config_in.file);
+    if (err != QL_HTTP_OK)
+        LOG_E("ql_http_request %d", err);
 
     if (config_in.file != NULL)
     {
@@ -176,6 +180,8 @@ static int ql_fota_http_process(ql_fota_http_config_s *config)
             break;
         }
     }
+    if (!config_in.succeed)
+        f_unlink(config->save_path);
     ql_http_deinit(http_handle);
     LOG_I("http download firmware end");
     if (err != QL_HTTP_OK)
@@ -193,6 +199,29 @@ static int ql_fota_ftp_process(ql_fota_ftp_config_s *config)
     config_in.cb = config->cb;
     config_in.user_data = config->user_data;
     config_in.location = config->location;
+    ql_ftp_t ftp_handle = ql_ftp_init(config->address, config->port, at_client_get_first());
+    ql_ftp_setopt(ftp_handle, QL_FTP_OPT_CONTEXT_ID, config->content_id);
+    ql_ftp_setopt(ftp_handle, QL_FTP_OPT_WRITE_FUNCTION, ql_ftp_download_callback);
+    ql_ftp_setopt(ftp_handle, QL_FTP_OPT_WRITE_DATA, (void*)&config_in);
+    ql_ftp_set_ssl(ftp_handle, config->ssl_cfg);
+    if (ql_ftp_login(ftp_handle, config->username, config->password) != QL_FTP_OK )
+    {
+        LOG_E("ftp Login failed");
+        ql_ftp_uninit(ftp_handle);
+        if (config->cb != NULL)
+            config->cb(QL_FOTA_FAIL,  0, config->user_data);
+        return -1;
+    }
+    if (ql_ftp_cwd(ftp_handle, config->work_dir) != QL_FTP_OK)
+    {
+        LOG_E("change work dir failed");
+        ql_ftp_logout(ftp_handle);
+        ql_ftp_uninit(ftp_handle);
+        if (config->cb != NULL)
+            config->cb(QL_FOTA_FAIL,  0, config->user_data);
+        return -1;
+    }
+    
     switch (config->location)
     {
     case QL_FOTA_DOWNLOAD_SD_CARD:
@@ -216,32 +245,25 @@ static int ql_fota_ftp_process(ql_fota_ftp_config_s *config)
             config->cb(QL_FOTA_FAIL,  0, config->user_data);
         return -1;
     }
-    ql_ftp_t ftp_handle = ql_ftp_init(config->address, config->port, at_client_get_first());
-    ql_ftp_setopt(ftp_handle, QL_FTP_OPT_CONTEXT_ID, config->content_id);
-    ql_ftp_setopt(ftp_handle, QL_FTP_OPT_WRITE_FUNCTION, ql_ftp_download_callback);
-    ql_ftp_setopt(ftp_handle, QL_FTP_OPT_WRITE_DATA, (void*)&config_in);
-    ql_ftp_set_ssl(ftp_handle, config->ssl_cfg);
-    if (ql_ftp_login(ftp_handle, config->username, config->password) != QL_FTP_OK )
-    {
-        LOG_E("ftp Login failed");
-        ql_ftp_uninit(ftp_handle);
-        if (config->cb != NULL)
-            config->cb(QL_FOTA_FAIL,  0, config->user_data);
-        return -1;
-    }
-    if (ql_ftp_cwd(ftp_handle, config->work_dir) != QL_FTP_OK)
-    {
-        LOG_E("change work dir failed");
-        ql_ftp_logout(ftp_handle);
-        ql_ftp_uninit(ftp_handle);
-        if (config->cb != NULL)
-            config->cb(QL_FOTA_FAIL,  0, config->user_data);
-        return -1;
-    }
     QL_FTP_ERR_CODE_E err = ql_ftp_download(ftp_handle, config->file_name, NULL);
+    if (err != QL_FTP_OK)
+        LOG_E("ql_ftp_download %d", err);
     ql_ftp_logout(ftp_handle);
     ql_ftp_uninit(ftp_handle);
     LOG_I("ftp download firmware end");
+    if (config_in.file != NULL)
+    {
+        switch (config_in.location)
+        {
+        case QL_FOTA_DOWNLOAD_SD_CARD:
+            f_close((FIL*)config_in.file);
+            free(config_in.file);
+            config_in.file = NULL;
+            break;
+        case QL_FOTA_DOWNLOAD_FLASH:
+            break;
+        }
+    }
     if (err != QL_FTP_OK)
     {
         if (config->cb != NULL)

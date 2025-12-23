@@ -100,6 +100,10 @@ static void print_ftp_list(const ql_ftp_file_info_s *head)
     LOG_I("\n");
 }
 
+static void progress_callback(int progress, int total, void* cur_size)
+{
+    LOG_I("ftp exec progress: %d/%d", progress, total);
+}
 int cli_ftp_test(s32_t argc, char *argv[])
 {
     if (argc < 14)
@@ -146,6 +150,8 @@ int cli_ftp_test(s32_t argc, char *argv[])
     ql_ftp_setopt(ftp_handle, QL_FTP_OPT_CONTEXT_ID, atoi(argv[1]));
     ql_ftp_setopt(ftp_handle, QL_FTP_OPT_FILE_TYPE, atoi(argv[4]));
     ql_ftp_setopt(ftp_handle, QL_FTP_OPT_RSP_TIMEOUT, atoi(argv[6]));
+    ql_ftp_setopt(ftp_handle, QL_FTP_OPT_PROGRESS_FUNCTION, progress_callback);
+    ql_ftp_setopt(ftp_handle, QL_FTP_OPT_PROGRESS_DATA, ftp_handle);
 #ifdef __QUECTEL_UFP_FEATURE_SUPPORT_SSL__
     if (!ql_ftp_set_ssl(ftp_handle, ssl_config))
         return -1;

@@ -12,7 +12,7 @@
 
 void cli_socket_get_help(void)
 {
-    LOG_I("| socket socket_type ip port count interval_ms max_connect_num                                     |");
+    LOG_I("| socket socket_type ip port count interval_ms max_connect_num/file_name                                     |");
     LOG_I("|      socket_type   : socket type                                                                 |");
     LOG_I("|                      0: TCP                                                                      |");
     LOG_I("|                      1: UDP                                                                      |");
@@ -23,6 +23,7 @@ void cli_socket_get_help(void)
     LOG_I("|     count           : Number of times the TCP/UDP client sends data                              |");
     LOG_I("|     interval_ms     : Time interval between TCP/UDP client data transmissions                    |");
     LOG_I("|     max_connect_num : Max number connect request(only tcp server need set)                       |");
+    LOG_I("|     file_name       : when socket_type == 0, this parameter specifies the file to upload.        |");
 }
 
 extern ql_net_t s_net_handle;
@@ -35,7 +36,7 @@ static void socket_service_proc(void *argument)
     if (config->type == SOCKET_TCP)
     {
 #ifdef __QUECTEL_UFP_FEATURE_SUPPORT_SOCKET_TCP_CLIENT__
-        cli_tcp_client_test(config->sin_port, config->sin_addr, config->loop_count, config->loop_interval);
+        cli_tcp_client_test(config->sin_port, config->sin_addr, config->loop_count, config->loop_interval, config->file_name);
 #endif
     }
     else if (config->type == SOCKET_UDP)
@@ -78,11 +79,15 @@ int cli_socket_test(s32_t argc, char *argv[])
     config.sin_port = atoi(argv[3]);
     config.loop_count = atoi(argv[4]);
     config.loop_interval = atoi(argv[5]);
+    config.file_name[0] = '\0';
+    if (config.type == 0 && argc >= 7)
+        strcpy(config.file_name, argv[6]);
     LOG_I("type                : %d", config.type);
     LOG_I("ip                  : %s", config.sin_addr);
     LOG_I("port                : %d", config.sin_port);
     LOG_I("loop_count          : %d", config.loop_count);
     LOG_I("loop_interval       : %d", config.loop_interval);
+    LOG_I("file_name           : %s", config.file_name);
     if (argc == 7)
     {
         config.max_connect_num = atoi(argv[6]);

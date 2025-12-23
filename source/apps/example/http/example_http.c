@@ -81,7 +81,7 @@ void example_test_get()
     // snprintf(headers, sizeof(headers), "%s", "Accept: application/json");
     // ql_http_setopt(handle, QL_HTTP_OPT_CUSTOM_HEADER, headers);
     const char *url = "https://httpbin.org/get";
-    QL_HTTP_ERR_CODE_E err = ql_http_request(handle, url, QL_HTTP_METHORD_GET, NULL, 0) != QL_HTTP_OK;
+    QL_HTTP_ERR_CODE_E err = ql_http_request(handle, url, QL_HTTP_METHORD_GET, NULL, 0);
     if (err != QL_HTTP_OK)
     {
         ql_http_deinit(handle);

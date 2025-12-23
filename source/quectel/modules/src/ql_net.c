@@ -3,7 +3,7 @@
 #include <stdarg.h>
 #include "qosa_log.h"
 #include "qosa_time.h"
-#include "module_info.h"
+#include "ql_module_compat.h"
 #include "ql_net.h"
 
 static bool s_global_net_init = false;
@@ -35,36 +35,6 @@ static const struct at_urc s_net_urc_table[] =
 	{"+QNTP:", "\r\n", ql_net_ntp}
 };
 
-static void ql_net_query_moudle_type(ql_net_t handle)
-{
-    at_response_t query_resp = NULL;
-    // Creating a response object for AT command
-    query_resp = at_create_resp(256, 0, (5000));
-    if (NULL == query_resp)
-    {
-        LOG_E("No memory for response object.");
-        return;
-    }
-
-    // Sending the AT command to query EMM reject cause value
-    if (at_obj_exec_cmd(handle->client, query_resp, "ATI") < 0)
-    {
-        LOG_E("ATI query failed.");
-        at_delete_resp(query_resp);
-        return;
-    }
-
-    // Parsing the response to extract EMM reject cause value
-    for (int i = 0; i < query_resp->line_counts; i++)
-    {
-        const char *line = at_resp_get_line(query_resp, i + 1);
-        if (set_module_type(line))
-            break;
-    }
-
-    // If the expected format is not found in the response
-    at_delete_resp(query_resp);
-}
 
 static int ql_net_query_sim_state(ql_net_t handle)
 {
@@ -353,7 +323,6 @@ ql_net_t ql_net_init(at_client_t client)
         s_global_net_init = true;
     }
     qosa_sem_create(&s_net_sem, 0);
-    ql_net_query_moudle_type(handle);
     return handle;
 }
 
@@ -384,19 +353,15 @@ bool ql_net_set_opt(ql_net_t handle, QL_NET_OPTION_E option, ...)
                         content->apn, content->username, content->password);
         break;
     case QL_NET_OPTINON_SCANMODE:
-        if (get_module_type() == MOD_TYPE_BG770 || 
-            get_module_type() == MOD_TYPE_BG96 || (get_module_type() == MOD_TYPE_BG95 &&
-                                                strstr(get_module_type_name(), "BG95-M3") == NULL &&
-                                                strstr(get_module_type_name(), "BG95-M5") == NULL &&
-                                                strstr(get_module_type_name(), "BG95-M8") == NULL))
+        if (!ql_support_net_scanmode())
             return false;
-        snprintf(cmd, sizeof(cmd), "AT+QCFG=\"nwscanmode\",%d,1", va_arg(args, int));
+        snprintf(cmd, sizeof(cmd), "AT+QCFG=\"nwscanmode\",%d", va_arg(args, int));
         break;
     case QL_NET_OPTINON_SCANSEQ:
         snprintf(cmd, sizeof(cmd), "AT+QCFG=\"nwscanseq\",%s,1", va_arg(args, const char *));
         break;
     case QL_NET_OPTINON_IOTOPMODE:
-        if (get_module_type() != MOD_TYPE_BG95 && get_module_type() != MOD_TYPE_BG96 && get_module_type() != MOD_TYPE_BG770)
+        if (!ql_support_net_iotopmode())
             return false;
         snprintf(cmd, sizeof(cmd), "AT+QCFG=\"iotopmode\",%d,1", va_arg(args, int));
         break;
@@ -464,9 +429,9 @@ QL_NET_ERR_CODE_E ql_net_attach(ql_net_t handle)
             else
                 break;
         }
+        ql_net_query_actice_state(handle);
     }
 
-    ql_net_query_actice_state(handle);
     net_request_ntp_time(handle, "pool.ntp.org");
     return QL_NET_OK;
 }

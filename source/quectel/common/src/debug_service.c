@@ -42,7 +42,6 @@ static uint8_t *g_log_rb_buf = QOSA_NULL;
 static osa_sem_t g_cli_input_sem_id = NULL;
 static osa_task_t g_serial_input_parse_thread_id = NULL;
 
-static int cli_test_table(int argc, char *argv[]);
 Cli_Menu_t* g_cli_fun_array = NULL;
 int32_t   g_cli_fun_array_size = 0;
 
@@ -419,7 +418,7 @@ static int debug_save_service_create(int rb_size)
 #endif /* __QUECTEL_UFP_FEATURE_SUPPORT_DEBUG_SAVE__ */
 
 
-static int cli_test_table(int argc, char *argv[])
+int cli_test_table(int argc, char *argv[])
 {
 	int i = 0;
     for (i = 0; i < argc; i++)
@@ -589,26 +588,6 @@ int debug_cli_func_reg(int32_t cnt, Cli_Menu_t cli_menu[])
     return 0;
 }
 
-static int prompt_need_wait_count = 0;
-void inc_prompt_wait_count()
-{
-	prompt_need_wait_count++;
-}
-
-void dec_prompt_wait_count()
-{
-	if (--prompt_need_wait_count < 0)
-		prompt_need_wait_count = 0;
-}
-
-void log_shell_prompt(void)
-{
-	if (prompt_need_wait_count <= 0)
-	{
-		// LOG_H("#");
-		// fflush(stdout);
-	}
-}
 #else
 void debug_uart_input_notify(void)
 {

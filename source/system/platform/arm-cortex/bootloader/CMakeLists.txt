@@ -19,7 +19,7 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
 # Project Settings
-project("Quectel_UFP_STM32F413RGT6_20251022_Bootloader" C CXX ASM)
+project("Quectel_UFP_STM32F413RGT6_20251223_Bootloader" C CXX ASM)
 message(STATUS "----- PROJECT_NAME [${PROJECT_NAME}] -----")
 
 # Compiler optimization level
