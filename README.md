@@ -58,7 +58,7 @@ Quectel User-Friendly Project, is a software framework specifically designed for
 
 ## Software Architecture
 <div align="center">
-  <img src="docs/Figures/Software-Architecture.png" alt="Software-Architecture">
+  <img src="docs/Figures/Software-Architecture-EN.png" alt="Software-Architecture">
 </div>
 
 
@@ -82,7 +82,7 @@ Quectel User-Friendly Project, is a software framework specifically designed for
 
 ## Quick Start
 ### Hardware Environment
-The most convenient method is using the QSTM32-L064M-SL-EVB development board for validation, which features onboard STM32 MCU, Quectel module, ST-Link debugger, and USB-to-UART tool. For detailed description, refer to [STM32_LQFP64_EVK_V2.0_User_Guide](./docs/Quick_Start/STM32%20LQFP64%20EVK%20V2.0%20User%20Guide%20V1.0-0605.pdf)
+The most convenient method is using the QSTM32-L064M-SL-EVB development board for validation, which features onboard STM32 MCU, Quectel module, ST-Link debugger, and USB-to-UART tool. For detailed description, refer to [STM32_LQFP64_EVK_V2.0_User_Guide](./docs/EN/Quick_Start/STM32%20LQFP64%20EVK%20V2.0%20User%20Guide%20V1.0-0605.pdf)
 
 <div align="center">
   <img src="docs/Figures/QSTM32-EVK-Gen2.png" alt="QSTM32-EVK">
@@ -90,7 +90,7 @@ The most convenient method is using the QSTM32-L064M-SL-EVB development board fo
 
 ### Host System
 This SDK supports both Windows and Linux development environments with comprehensive automated scripts.
-- For **`Windows`** environment, Windows 10 (64-bit) is recommended. ST-Link and CP210x driver installation methods are detailed in [Quectel_QSTM32_SDK_Quick_Start_Guide](./docs/Quick_Start/Quectel_QSTM32_SDK_Quick_Start_Guide_V2.0.pdf)
+- For **`Windows`** environment, Windows 10 (64-bit) is recommended. ST-Link and CP210x driver installation methods are detailed in [Quectel_QSTM32_SDK_Quick_Start_Guide](./docs/EN/Quick_Start/Quectel_QSTM32_SDK_Quick_Start_Guide_V2.0.pdf)
 - For **`Linux`** environment, Ubuntu 18.04/20.04/22.04 and Debian-based distributions are supported. The build.sh script is theoretically compatible with other distributions, though command modifications may be required. For ST-Link and CP210x drivers, most modern Linux distributions include them in the kernel and typically don't require manual installation. Additionally, Python3 needs to be installed in advance.
 
 ### Software Deployment

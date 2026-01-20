@@ -59,7 +59,7 @@ Quectel User-Friendly Project，是移远通信专门为开发者设计的一套
 
 ## 软件架构
 <div align="center">
-  <img src="docs/Figures/Software-Architecture.png" alt="Software-Architecture">
+  <img src="docs/Figures/Software-Architecture-CN.png" alt="Software-Architecture">
 </div>
 
 <br>
@@ -84,7 +84,7 @@ Quectel User-Friendly Project，是移远通信专门为开发者设计的一套
 
 ## 快速开始
 ### 硬件环境
-最方便的方法是使用 QSTM32-L064M-SL-EVB 开发板进行验证，其板载STM32单片机、Quectel模组、ST-Link调试器和USB-to-UART工具，详细描述可参考 [STM32_LQFP64_EVK_V2.0_User_Guide](./docs/Quick_Start/STM32%20LQFP64%20EVK%20V2.0%20User%20Guide%20V1.0-0605.pdf)
+最方便的方法是使用 QSTM32-L064M-SL-EVB 开发板进行验证，其板载STM32单片机、Quectel模组、ST-Link调试器和USB-to-UART工具，详细描述可参考 [STM32 LQFP64 V2.0载板使用说明](./docs/CN/Quick_Start/STM32%20LQFP64%20V2.0载板使用说明%20V1.0-0605.pdf)
 
 <div align="center">
   <img src="docs/Figures/QSTM32-EVK-Gen2.png" alt="QSTM32-EVK">
@@ -92,7 +92,7 @@ Quectel User-Friendly Project，是移远通信专门为开发者设计的一套
 
 ### 主机系统
 本SDK支持Windows和Linux开发环境，均已开发了完善的自动化脚本。
-- 对于 **`Windows`** 环境，推荐使用 Windows 10(64-bit)。ST-Link 和 CP210x 的驱动安装方法详见 [Quectel_QSTM32_SDK_Quick_Start_Guide](./docs/Quick_Start/Quectel_QSTM32_SDK_Quick_Start_Guide_V2.0.pdf)
+- 对于 **`Windows`** 环境，推荐使用 Windows 10(64-bit)。ST-Link 和 CP210x 的驱动安装方法详见 [Quectel_QSTM32_SDK_快速开发指导](./docs/CN/Quick_Start/Quectel_QSTM32_SDK_快速开发指导_V2.0.pdf)
 - 对于 **`Linux`** 环境，支持 Ubuntu 18.04/20.04/22.04, 基于Debian的Linux发行版，build.sh脚本理论上都兼容，其他发行版需要对脚本中的命令做相应修改。对于ST-Link 和 CP210x驱动，大多数现代Linux发行版在内核中已集成，通常无需手动安装。另外，也需要提前安装python3。
 
 ### 软件部署
