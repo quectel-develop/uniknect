@@ -24,7 +24,7 @@
 # Quectel UniKnect Project
 
 ## Overview
-Quectel User-UniKnect Project, is a software framework specifically designed for developers. Within this framework, developers can directly call APIs to implement various functionalities without dealing with complex AT data interactions between MCU and modules. This approach has addressed the pain points of traditional AT command development methods, and it can make Quectel module development simpler and more user-friendly.
+Quectel UniKnect Project, is a software framework specifically designed for developers. Within this framework, developers can directly call APIs to implement various functionalities without dealing with complex AT data interactions between MCU and modules. This approach has addressed the pain points of traditional AT command development methods, and it can make Quectel module development simpler and more user-friendly.
 
 ### **`Benefits of Importing the Project`**
 
