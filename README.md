@@ -8,11 +8,11 @@
 </div>
 
 [![License](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](./LICENSE)
-[![GitHub Release](https://img.shields.io/github/v/release/quectel-develop/user-friendly-project)](https://github.com/quectel-develop/user-friendly-project/releases/latest)
-[![GitHub Last Commit](https://img.shields.io/github/last-commit/quectel-develop/user-friendly-project)](https://github.com/quectel-develop/user-friendly-project/commits/master)
-[![GitHub Stars](https://img.shields.io/github/stars/quectel-develop/user-friendly-project?style=flat-square&logo=GitHub)](https://github.com/quectel-develop/user-friendly-project/stargazers)
-[![GitHub Repo Size](https://img.shields.io/github/repo-size/quectel-develop/user-friendly-project)](https://github.com/quectel-develop/user-friendly-project)
-[![GitHub Repo Size](https://img.shields.io/github/languages/code-size/quectel-develop/user-friendly-project)](https://github.com/quectel-develop/user-friendly-project)
+[![GitHub Release](https://img.shields.io/github/v/release/quectel-develop/uniknect)](https://github.com/quectel-develop/uniknect/releases/latest)
+[![GitHub Last Commit](https://img.shields.io/github/last-commit/quectel-develop/uniknect)](https://github.com/quectel-develop/uniknect/commits/master)
+[![GitHub Stars](https://img.shields.io/github/stars/quectel-develop/uniknect?style=flat-square&logo=GitHub)](https://github.com/quectel-develop/uniknect/stargazers)
+[![GitHub Repo Size](https://img.shields.io/github/repo-size/quectel-develop/uniknect)](https://github.com/quectel-develop/uniknect)
+[![GitHub Repo Size](https://img.shields.io/github/languages/code-size/quectel-develop/uniknect)](https://github.com/quectel-develop/uniknect)
 [![Supported OS](https://img.shields.io/badge/OS-FreeRTOS-green.svg)](https://www.freertos.org/)
 [![Platform](https://img.shields.io/badge/Env-Windows%20|%20Linux-blue.svg)](https://www.linux.org/)
 [![Documentation](https://img.shields.io/badge/Docs-100%25-blue.svg)](./docs)
@@ -21,10 +21,10 @@
   <b>English</b> | <a href="./README_zh.md">中文</a>
 </div>
 
-# Quectel User-Friendly SDK
+# Quectel UniKnect Project
 
 ## Overview
-Quectel User-Friendly Project, is a software framework specifically designed for developers. Within this framework, developers can directly call APIs to implement various functionalities without dealing with complex AT data interactions between MCU and modules. This approach has addressed the pain points of traditional AT command development methods, and it can make Quectel module development simpler and more user-friendly.
+Quectel User-UniKnect Project, is a software framework specifically designed for developers. Within this framework, developers can directly call APIs to implement various functionalities without dealing with complex AT data interactions between MCU and modules. This approach has addressed the pain points of traditional AT command development methods, and it can make Quectel module development simpler and more user-friendly.
 
 ### **`Benefits of Importing the Project`**
 
@@ -96,7 +96,7 @@ This SDK supports both Windows and Linux development environments with comprehen
 ### Software Deployment
 Clone this project SDK using git:
 
-    git clone https://github.com/quectel-develop/user-friendly-project.git
+    git clone https://github.com/quectel-develop/uniknect.git
 
 A complete cross-compilation toolchain is provided in the [source/tools](./source/tools/) directory, requiring no additional software development environment setup - ready to use out-of-the-box.
 
@@ -105,7 +105,7 @@ Use build.bat for Windows development environment and build.sh for Linux environ
 
 **`For Windows environment, use the following commands:`**
 
-    cd user-friendly-project\source\    # Change directory
+    cd uniknect\source\                 # Change directory
     .\build.bat config                  # Configure build system
     .\build.bat app                     # Compile app
     .\build.bat bootloader              # Compile bootloader
@@ -116,7 +116,7 @@ Use build.bat for Windows development environment and build.sh for Linux environ
 
 **`For Linux environment, use the following commands:`**
 
-    cd user-friendly-project/source/    # Change directory
+    cd uniknect/source/                 # Change directory
     ./build.sh config                   # Configure build system
     ./build.sh app                      # Compile app
     ./build.sh bootloader               # Compile bootloader

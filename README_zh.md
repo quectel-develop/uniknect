@@ -8,11 +8,11 @@
 </div>
 
 [![License](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](./LICENSE)
-[![GitHub Release](https://img.shields.io/github/v/release/quectel-develop/user-friendly-project)](https://github.com/quectel-develop/user-friendly-project/releases/latest)
-[![GitHub Last Commit](https://img.shields.io/github/last-commit/quectel-develop/user-friendly-project)](https://github.com/quectel-develop/user-friendly-project/commits/master)
-[![GitHub Stars](https://img.shields.io/github/stars/quectel-develop/user-friendly-project?style=flat-square&logo=GitHub)](https://github.com/quectel-develop/user-friendly-project/stargazers)
-[![GitHub Repo Size](https://img.shields.io/github/repo-size/quectel-develop/user-friendly-project)](https://github.com/quectel-develop/user-friendly-project)
-[![GitHub Repo Size](https://img.shields.io/github/languages/code-size/quectel-develop/user-friendly-project)](https://github.com/quectel-develop/user-friendly-project)
+[![GitHub Release](https://img.shields.io/github/v/release/quectel-develop/uniknect)](https://github.com/quectel-develop/uniknect/releases/latest)
+[![GitHub Last Commit](https://img.shields.io/github/last-commit/quectel-develop/uniknect)](https://github.com/quectel-develop/uniknect/commits/master)
+[![GitHub Stars](https://img.shields.io/github/stars/quectel-develop/uniknect?style=flat-square&logo=GitHub)](https://github.com/quectel-develop/uniknect/stargazers)
+[![GitHub Repo Size](https://img.shields.io/github/repo-size/quectel-develop/uniknect)](https://github.com/quectel-develop/uniknect)
+[![GitHub Repo Size](https://img.shields.io/github/languages/code-size/quectel-develop/uniknect)](https://github.com/quectel-develop/uniknect)
 [![Supported OS](https://img.shields.io/badge/OS-FreeRTOS-green.svg)](https://www.freertos.org/)
 [![Platform](https://img.shields.io/badge/Env-Windows%20|%20Linux-blue.svg)](https://www.linux.org/)
 [![Documentation](https://img.shields.io/badge/Docs-100%25-blue.svg)](./docs)
@@ -21,10 +21,10 @@
   <a href="./README.md">English</a> | <b>中文</b>
 </div>
 
-# Quectel User-Friendly SDK
+# Quectel UniKnect Project
 
 ## 项目简介
-Quectel User-Friendly Project，是移远通信专门为开发者设计的一套软件框架，在该框架下可直接调用API
+Quectel UniKnect Project，是移远通信专门为开发者设计的一套软件框架，在该框架下可直接调用API
 来实现各种功能，开发者只需专注于自己的业务逻辑，而无需处理MCU和模组之间复杂的AT数据交互，解决了传统AT命令开发方式的诸多痛点，从而使移远模组的开发更加简单、友好。
 
 ### **`通过导入这个项目，你将获得：`**
@@ -98,7 +98,7 @@ Quectel User-Friendly Project，是移远通信专门为开发者设计的一套
 ### 软件部署
 可使用git工具克隆本项目SDK：
 
-    git clone https://github.com/quectel-develop/user-friendly-project.git
+    git clone https://github.com/quectel-develop/uniknect.git
 
 在 [source/tools](./source/tools/) 目录中已提供了完整的交叉编译工具链，故无需搭建软件开发环境，开箱即用。
 
@@ -107,7 +107,7 @@ Windows 开发环境使用 build.bat，Linux 开发环境使用 build.sh。
 
 **`如果你使用的是 Windows, 需要用以下命令：`**
 
-    cd user-friendly-project\source\    # 切换目录
+    cd uniknect\source\                 # 切换目录
     .\build.bat config                  # 构建系统
     .\build.bat app                     # 编译 app
     .\build.bat bootloader              # 编译 bootloader
@@ -118,7 +118,7 @@ Windows 开发环境使用 build.bat，Linux 开发环境使用 build.sh。
 
 **`如果你使用的是 Linux, 需要用以下命令：`**
 
-    cd user-friendly-project/source/    # 切换目录
+    cd uniknect/source/                 # 切换目录
     ./build.sh config                   # 构建系统
     ./build.sh app                      # 编译 app
     ./build.sh bootloader               # 编译 bootloader
