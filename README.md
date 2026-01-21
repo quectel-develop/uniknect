@@ -90,7 +90,7 @@ The most convenient method is using the QSTM32-L064M-SL-EVB development board fo
 
 ### Host System
 This SDK supports both Windows and Linux development environments with comprehensive automated scripts.
-- For **`Windows`** environment, Windows 10 (64-bit) is recommended. ST-Link and CP210x driver installation methods are detailed in [Quectel_QSTM32_SDK_Quick_Start_Guide](./docs/EN/Quick_Start/Quectel_QSTM32_SDK_Quick_Start_Guide_V2.0.pdf)
+- For **`Windows`** environment, Windows 10 (64-bit) is recommended. ST-Link and CP210x driver installation methods are detailed in [Quectel_QSTM32_SDK_Quick_Start_Guide](./docs/EN/Quick_Start/Quectel_QSTM32_SDK_Quick_Start_Guide_V2.1.pdf)
 - For **`Linux`** environment, Ubuntu 18.04/20.04/22.04 and Debian-based distributions are supported. The build.sh script is theoretically compatible with other distributions, though command modifications may be required. For ST-Link and CP210x drivers, most modern Linux distributions include them in the kernel and typically don't require manual installation. Additionally, Python3 needs to be installed in advance.
 
 ### Software Deployment

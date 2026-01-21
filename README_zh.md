@@ -92,7 +92,7 @@ Quectel UniKnect Project，是移远通信专门为开发者设计的一套软�
 
 ### 主机系统
 本SDK支持Windows和Linux开发环境，均已开发了完善的自动化脚本。
-- 对于 **`Windows`** 环境，推荐使用 Windows 10(64-bit)。ST-Link 和 CP210x 的驱动安装方法详见 [Quectel_QSTM32_SDK_快速开发指导](./docs/CN/Quick_Start/Quectel_QSTM32_SDK_快速开发指导_V2.0.pdf)
+- 对于 **`Windows`** 环境，推荐使用 Windows 10(64-bit)。ST-Link 和 CP210x 的驱动安装方法详见 [Quectel_QSTM32_SDK_快速开发指导](./docs/CN/Quick_Start/Quectel_QSTM32_SDK_快速开发指导_V2.1.pdf)
 - 对于 **`Linux`** 环境，支持 Ubuntu 18.04/20.04/22.04, 基于Debian的Linux发行版，build.sh脚本理论上都兼容，其他发行版需要对脚本中的命令做相应修改。对于ST-Link 和 CP210x驱动，大多数现代Linux发行版在内核中已集成，通常无需手动安装。另外，也需要提前安装python3。
 
 ### 软件部署
